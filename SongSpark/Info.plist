@@ -31,6 +31,11 @@
 	<string>1</string>
 	<key>DropboxAppKey</key>
 	<string>$(DROPBOX_APP_KEY)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>dbapi-2</string>
+		<string>dbapi-8-emm</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SongSpark stamps your recordings with GPS location.</string>
 	<key>NSMicrophoneUsageDescription</key>

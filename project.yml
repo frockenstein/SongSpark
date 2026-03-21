@@ -38,6 +38,9 @@ targets:
           - CFBundleURLSchemes:
               - "db-$(DROPBOX_APP_KEY)"
             CFBundleURLName: com.songspark.app.dropbox
+        LSApplicationQueriesSchemes:
+          - dbapi-2
+          - dbapi-8-emm
     dependencies:
       - package: SwiftyDropbox
     configFiles:
