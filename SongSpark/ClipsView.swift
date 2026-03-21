@@ -3,6 +3,8 @@ import SwiftUI
 struct ClipsView: View {
     @EnvironmentObject var clipStore: ClipStore
     @Environment(\.dismiss) private var dismiss
+    @State private var editingClip: Clip?
+    @State private var deletingClip: Clip?
 
     var body: some View {
         ZStack {
@@ -50,7 +52,7 @@ struct ClipsView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(clipStore.clips) { clip in
-                                ClipRow(clip: clip)
+                                ClipRow(clip: clip, onEdit: { editingClip = clip }, onDelete: { deletingClip = clip })
                                     .environmentObject(clipStore)
                                 Divider()
                                     .background(Color.white.opacity(0.06))
@@ -62,6 +64,14 @@ struct ClipsView: View {
                     .refreshable {
                         await clipStore.loadClips()
                     }
+                }
+
+                if clipStore.isLoading {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(.gray).scaleEffect(0.7)
+                        Text("Saving...").font(.system(size: 11, design: .monospaced)).foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 6)
                 }
 
                 if let error = clipStore.errorMessage {
@@ -84,6 +94,30 @@ struct ClipsView: View {
                 }
             }
         }
+        .sheet(item: $editingClip) { clip in
+            ClipNameSheet(
+                title: "RENAME CLIP",
+                initialValue: clip.description ?? ""
+            ) { description in
+                Task { await clipStore.renameClip(clip, description: description) }
+            }
+        }
+        .confirmationDialog("Delete this clip?", isPresented: Binding(
+            get: { deletingClip != nil },
+            set: { if !$0 { deletingClip = nil } }
+        ), titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let clip = deletingClip {
+                    Task { await clipStore.deleteClip(clip) }
+                }
+                deletingClip = nil
+            }
+            Button("Cancel", role: .cancel) { deletingClip = nil }
+        } message: {
+            if let clip = deletingClip {
+                Text(clip.description ?? clip.filename)
+            }
+        }
     }
 }
 
@@ -91,13 +125,15 @@ struct ClipsView: View {
 
 struct ClipRow: View {
     let clip: Clip
+    let onEdit: () -> Void
+    let onDelete: () -> Void
     @EnvironmentObject var clipStore: ClipStore
 
     private var isPlaying: Bool { clipStore.playingFilename == clip.filename }
-    private var isDownloading: Bool { clipStore.isDownloading && clipStore.playingFilename == nil }
+    private var isThisDownloading: Bool { clipStore.isDownloading && clipStore.playingFilename == nil }
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             // Play / stop button
             Button {
                 Task { await clipStore.togglePlayback(clip: clip) }
@@ -109,10 +145,8 @@ struct ClipRow: View {
                             : Color.white.opacity(0.07))
                         .frame(width: 40, height: 40)
 
-                    if isDownloading {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(0.7)
+                    if isThisDownloading {
+                        ProgressView().tint(.white).scaleEffect(0.7)
                     } else {
                         Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                             .font(.system(size: 14))
@@ -125,21 +159,21 @@ struct ClipRow: View {
             .buttonStyle(.plain)
 
             // Clip info
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(clip.formattedDay)
+            VStack(alignment: .leading, spacing: 3) {
+                if let desc = clip.description {
+                    Text(desc)
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
                         .foregroundColor(.white)
-                    Text(clip.formattedTime)
-                        .font(.system(size: 14, design: .monospaced))
-                        .foregroundColor(Color.white.opacity(0.5))
+                        .lineLimit(1)
                 }
-
-                Text(clip.filename)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(Color.white.opacity(0.25))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 6) {
+                    Text(clip.formattedDay)
+                        .font(.system(size: clip.description == nil ? 14 : 11, design: .monospaced))
+                        .foregroundColor(clip.description == nil ? .white : Color.white.opacity(0.45))
+                    Text(clip.formattedTime)
+                        .font(.system(size: clip.description == nil ? 14 : 11, design: .monospaced))
+                        .foregroundColor(Color.white.opacity(0.4))
+                }
 
                 if isPlaying {
                     ProgressBar(progress: clipStore.playbackProgress)
@@ -148,9 +182,32 @@ struct ClipRow: View {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            // Edit / delete
+            HStack(spacing: 4) {
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.white.opacity(0.35))
+                        .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(red: 1.0, green: 0.35, blue: 0.35).opacity(0.7))
+                        .frame(width: 32, height: 32)
+                        .background(Color(red: 1.0, green: 0.2, blue: 0.2).opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
     }

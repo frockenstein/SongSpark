@@ -69,7 +69,6 @@ final class AudioRecorder: NSObject, ObservableObject {
         }
 
         recorder.stop()
-        state = .uploading
         completion(currentFileURL)
     }
 

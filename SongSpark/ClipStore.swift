@@ -60,6 +60,105 @@ final class ClipStore: NSObject, ObservableObject {
         await saveMetadata()
     }
 
+    func renameClip(_ clip: Clip, description: String?) async {
+        let newFilename = buildFilename(from: clip.filename, description: description)
+        guard newFilename != clip.filename else { return }
+
+        guard let client = DropboxClientsManager.authorizedClient else {
+            errorMessage = "Not connected to Dropbox."
+            return
+        }
+
+        // Move in Dropbox
+        let moved = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            client.files.moveV2(fromPath: "/\(clip.filename)", toPath: "/\(newFilename)")
+                .response { [weak self] _, error in
+                    Task { @MainActor [weak self] in
+                        if let error {
+                            self?.errorMessage = "Rename failed: \(error.description)"
+                            continuation.resume(returning: false)
+                        } else {
+                            continuation.resume(returning: true)
+                        }
+                    }
+                }
+        }
+
+        guard moved else { return }
+
+        // Rename local cache file if present
+        let oldCache = cacheURL(for: clip.filename)
+        let newCache = cacheURL(for: newFilename)
+        if FileManager.default.fileExists(atPath: oldCache.path) {
+            try? FileManager.default.moveItem(at: oldCache, to: newCache)
+        }
+
+        // If this clip was playing, stop so we don't hold a stale reference
+        if playingFilename == clip.filename { stop() }
+
+        // Update in-memory array and persist
+        if let idx = clips.firstIndex(of: clip) {
+            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt)
+        }
+        await saveMetadata()
+    }
+
+    func deleteClip(_ clip: Clip) async {
+        guard let client = DropboxClientsManager.authorizedClient else {
+            errorMessage = "Not connected to Dropbox."
+            return
+        }
+
+        let deleted = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            client.files.deleteV2(path: "/\(clip.filename)")
+                .response { [weak self] _, error in
+                    Task { @MainActor [weak self] in
+                        if let error {
+                            self?.errorMessage = "Delete failed: \(error.description)"
+                            continuation.resume(returning: false)
+                        } else {
+                            continuation.resume(returning: true)
+                        }
+                    }
+                }
+        }
+
+        guard deleted else { return }
+
+        // Remove local cache
+        let cache = cacheURL(for: clip.filename)
+        try? FileManager.default.removeItem(at: cache)
+
+        if playingFilename == clip.filename { stop() }
+
+        clips.removeAll { $0.id == clip.id }
+        await saveMetadata()
+    }
+
+    // MARK: - Filename helpers
+
+    /// Sanitize a user-entered description for use in a filename.
+    static func sanitize(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespaces)
+            .lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .joined(separator: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+    }
+
+    /// Rebuild a filename, replacing or removing the description part.
+    /// Format: {year}-{day}-{month}-{unix}[-{description}].m4a
+    private func buildFilename(from original: String, description: String?) -> String {
+        let base = (original as NSString).deletingPathExtension
+        let parts = base.components(separatedBy: "-")
+        let timestamp = parts.prefix(4).joined(separator: "-")
+        if let desc = description, !desc.isEmpty {
+            let sanitized = Self.sanitize(desc)
+            return sanitized.isEmpty ? "\(timestamp).m4a" : "\(timestamp)-\(sanitized).m4a"
+        }
+        return "\(timestamp).m4a"
+    }
+
     private func saveMetadata() async {
         guard let client = DropboxClientsManager.authorizedClient else { return }
 

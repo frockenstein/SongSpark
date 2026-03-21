@@ -6,6 +6,8 @@ struct ContentView: View {
     @StateObject private var recorder = AudioRecorder()
     @State private var showSettings = false
     @State private var showClips = false
+    @State private var pendingUploadURL: URL?
+    @State private var showNamingSheet = false
 
     var body: some View {
         ZStack {
@@ -87,6 +89,11 @@ struct ContentView: View {
             ClipsView()
                 .environmentObject(clipStore)
         }
+        .sheet(isPresented: $showNamingSheet) {
+            ClipNameSheet { description in
+                uploadPendingRecording(description: description)
+            }
+        }
     }
 
     private var statusText: String {
@@ -121,20 +128,43 @@ struct ContentView: View {
                     recorder.state = .error
                     return
                 }
-                let filename = fileURL.lastPathComponent
-                dropboxManager.upload(fileURL: fileURL) { result in
-                    switch result {
-                    case .success:
-                        recorder.state = .done
-                        Task { await clipStore.addClip(filename: filename) }
-                    case .failure(let error):
-                        recorder.errorMessage = error.localizedDescription
-                        recorder.state = .error
-                    }
-                }
+                pendingUploadURL = fileURL
+                recorder.state = .idle
+                showNamingSheet = true
             }
         case .uploading:
             break
+        }
+    }
+
+    private func uploadPendingRecording(description: String?) {
+        guard let fileURL = pendingUploadURL else { return }
+        pendingUploadURL = nil
+
+        var uploadURL = fileURL
+        if let desc = description, !desc.trimmingCharacters(in: .whitespaces).isEmpty {
+            let sanitized = ClipStore.sanitize(desc)
+            if !sanitized.isEmpty {
+                let base = (fileURL.lastPathComponent as NSString).deletingPathExtension
+                let newName = "\(base)-\(sanitized).m4a"
+                let newURL = fileURL.deletingLastPathComponent().appendingPathComponent(newName)
+                if (try? FileManager.default.moveItem(at: fileURL, to: newURL)) != nil {
+                    uploadURL = newURL
+                }
+            }
+        }
+
+        recorder.state = .uploading
+        let filename = uploadURL.lastPathComponent
+        dropboxManager.upload(fileURL: uploadURL) { result in
+            switch result {
+            case .success:
+                recorder.state = .done
+                Task { await clipStore.addClip(filename: filename) }
+            case .failure(let error):
+                recorder.errorMessage = error.localizedDescription
+                recorder.state = .error
+            }
         }
     }
 }
