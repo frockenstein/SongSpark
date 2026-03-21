@@ -217,13 +217,13 @@ struct RecordButton: View {
                             : Color(red: 0.8, green: 0.3, blue: 0.2)
                     )
                     .frame(width: 168, height: 168)
-                    .scaleEffect(isRecording ? 1.0 + CGFloat(audioLevel) * 0.18 : 1.0)
+                    .scaleEffect(isRecording ? 1.0 + CGFloat(audioLevel) * 0.23 : 1.0)
                     .shadow(
                         color: isRecording
                             ? Color(red: 1.0, green: 0.2, blue: 0.2)
-                                .opacity(0.2 + Double(audioLevel) * 0.75)
+                                .opacity(0.2 + Double(audioLevel) * 0.98)
                             : .black.opacity(0.5),
-                        radius: isRecording ? 8 + CGFloat(audioLevel) * 44 : 10,
+                        radius: isRecording ? 8 + CGFloat(audioLevel) * 57 : 10,
                         x: 0,
                         y: isRecording ? 0 : 6
                     )
@@ -242,7 +242,7 @@ struct RecordButton: View {
             }
         }
         .scaleEffect(isPressing ? 0.94 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressing)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressing)
         .animation(.easeInOut(duration: 0.2), value: isRecording)
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)

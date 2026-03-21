@@ -93,7 +93,7 @@ final class AudioRecorder: NSObject, ObservableObject {
                 if raw > self.audioLevel {
                     self.audioLevel += (raw - self.audioLevel) * 0.75
                 } else {
-                    self.audioLevel += (raw - self.audioLevel) * 0.20
+                    self.audioLevel += (raw - self.audioLevel) * 0.35
                 }
             }
         }
