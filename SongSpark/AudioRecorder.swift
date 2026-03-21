@@ -85,9 +85,10 @@ final class AudioRecorder: NSObject, ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self, let rec = self.audioRecorder, rec.isRecording else { return }
                 rec.updateMeters()
-                // averagePower returns dB in roughly -160…0; map -50…0 dB → 0…1
+                // averagePower returns dB in roughly -160…0; map -35…0 dB → 0…1
+                // Narrower window = more sensitive to quiet sounds
                 let db  = rec.averagePower(forChannel: 0)
-                let raw = max(0, min(1, (db + 50) / 50))
+                let raw = max(0, min(1, (db + 35) / 35))
                 // Fast attack, slow decay — feels like a proper VU meter
                 if raw > self.audioLevel {
                     self.audioLevel += (raw - self.audioLevel) * 0.75

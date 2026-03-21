@@ -217,13 +217,13 @@ struct RecordButton: View {
                             : Color(red: 0.8, green: 0.3, blue: 0.2)
                     )
                     .frame(width: 168, height: 168)
-                    .scaleEffect(isRecording ? 1.0 + CGFloat(audioLevel) * 0.08 : 1.0)
+                    .scaleEffect(isRecording ? 1.0 + CGFloat(audioLevel) * 0.18 : 1.0)
                     .shadow(
                         color: isRecording
                             ? Color(red: 1.0, green: 0.2, blue: 0.2)
-                                .opacity(0.35 + Double(audioLevel) * 0.45)
+                                .opacity(0.2 + Double(audioLevel) * 0.75)
                             : .black.opacity(0.5),
-                        radius: isRecording ? 16 + CGFloat(audioLevel) * 24 : 10,
+                        radius: isRecording ? 8 + CGFloat(audioLevel) * 44 : 10,
                         x: 0,
                         y: isRecording ? 0 : 6
                     )
