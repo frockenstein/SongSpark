@@ -3,6 +3,16 @@ import SwiftUI
 struct SplashView: View {
     @State private var opacity: Double = 0
 
+    private static let quotes = [
+        "all we are is dust in the wind",
+        "all we are is just another brick in the wall",
+        "manic depression is a frustrating mess",
+        "life goes on long after the thrill of living is gone",
+        "we're still running against the wind",
+    ]
+
+    private let quote = quotes.randomElement()!
+
     var body: some View {
         ZStack {
             Color(red: 0.12, green: 0.10, blue: 0.08).ignoresSafeArea()
@@ -13,10 +23,12 @@ struct SplashView: View {
                     .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
                     .tracking(8)
 
-                Text("all we are is dust in the wind")
-                    .font(.system(size: 12, weight: .light, design: .monospaced))
+                Text(quote)
+                    .font(.system(size: 15, weight: .light, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.3))
                     .tracking(1)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
             }
             .opacity(opacity)
             .onAppear {

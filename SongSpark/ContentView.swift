@@ -60,7 +60,7 @@ struct ContentView: View {
                             .padding(.horizontal, 32)
                     } else if let filename = recorder.lastFilename {
                         Text(filename)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 14, design: .monospaced))
                             .foregroundColor(.gray)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -266,7 +266,7 @@ struct DropboxStatusView: View {
                     : Color(red: 0.9, green: 0.4, blue: 0.4))
                 .frame(width: 8, height: 8)
             Text(dropboxManager.isAuthorized ? "Dropbox connected" : "Dropbox not connected")
-                .font(.system(size: 15, design: .monospaced))
+                .font(.system(size: 18, design: .monospaced))
                 .foregroundColor(dropboxManager.isAuthorized
                     ? Color.white.opacity(0.5)
                     : Color(red: 0.9, green: 0.5, blue: 0.4))
