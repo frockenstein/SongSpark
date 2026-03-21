@@ -14,80 +14,81 @@ struct ContentView: View {
             Color(red: 0.12, green: 0.10, blue: 0.08)
                 .ignoresSafeArea()
 
-            VStack(spacing: 40) {
-                // Header
-                ZStack {
-                    VStack(spacing: 4) {
-                        Text("SONGSPARK")
-                            .font(.system(size: 24, weight: .black, design: .monospaced))
-                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
-                            .tracking(6)
-
-                        Text("v0.1")
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundColor(.gray)
+            VStack(spacing: 0) {
+                // ── Top bar ──────────────────────────────────────────────
+                HStack {
+                    Button { showClips = true } label: {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color.white.opacity(0.55))
+                            .frame(width: 44, height: 44)
                     }
 
-                    HStack {
-                        Button {
-                            showClips = true
-                        } label: {
-                            Image(systemName: "list.bullet")
-                                .font(.system(size: 18))
-                                .foregroundColor(.gray)
-                        }
-                        Spacer()
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 18))
-                                .foregroundColor(.gray)
-                        }
+                    Spacer()
+
+                    Text("SONGSPARK")
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                        .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
+                        .tracking(5)
+
+                    Spacer()
+
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color.white.opacity(0.55))
+                            .frame(width: 44, height: 44)
                     }
                 }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
 
-                // Status display
-                VStack(spacing: 8) {
+                Spacer()
+
+                // ── Status ───────────────────────────────────────────────
+                VStack(spacing: 10) {
                     Text(statusText)
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
                         .foregroundColor(statusColor)
                         .animation(.easeInOut, value: recorder.state)
 
-                    if recorder.state == .error, let errorMessage = recorder.errorMessage {
-                        Text(errorMessage)
-                            .font(.system(size: 11, design: .monospaced))
+                    if recorder.state == .error, let msg = recorder.errorMessage {
+                        Text(msg)
+                            .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(Color(red: 1.0, green: 0.4, blue: 0.4))
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                            .padding(.horizontal, 32)
                     } else if let filename = recorder.lastFilename {
                         Text(filename)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.gray)
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .padding(.horizontal, 32)
                     }
                 }
-                .frame(minHeight: 50)
+                .frame(minHeight: 52)
 
-                // Record button
+                Spacer()
+
+                // ── Record button ─────────────────────────────────────────
                 RecordButton(isRecording: recorder.state == .recording) {
                     handleRecordTap()
                 }
 
-                // Dropbox status indicator
+                Spacer()
+
+                // ── Dropbox status ────────────────────────────────────────
                 DropboxStatusView()
                     .environmentObject(dropboxManager)
+                    .padding(.bottom, 40)
             }
-            .padding()
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
-                .environmentObject(dropboxManager)
+            SettingsView().environmentObject(dropboxManager)
         }
         .sheet(isPresented: $showClips) {
-            ClipsView()
-                .environmentObject(clipStore)
+            ClipsView().environmentObject(clipStore)
         }
         .sheet(isPresented: $showNamingSheet) {
             ClipNameSheet { description in
@@ -96,25 +97,29 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Status helpers
+
     private var statusText: String {
         switch recorder.state {
-        case .idle: return "READY"
+        case .idle:      return "READY"
         case .recording: return "● REC"
         case .uploading: return "UPLOADING..."
-        case .done: return "SAVED ✓"
-        case .error: return "ERROR —"
+        case .done:      return "SAVED ✓"
+        case .error:     return "ERROR —"
         }
     }
 
     private var statusColor: Color {
         switch recorder.state {
-        case .idle: return .gray
+        case .idle:      return .gray
         case .recording: return Color(red: 1.0, green: 0.3, blue: 0.3)
         case .uploading: return Color(red: 1.0, green: 0.75, blue: 0.3)
-        case .done: return Color(red: 0.4, green: 0.9, blue: 0.4)
-        case .error: return Color(red: 1.0, green: 0.3, blue: 0.3)
+        case .done:      return Color(red: 0.4, green: 0.9, blue: 0.4)
+        case .error:     return Color(red: 1.0, green: 0.3, blue: 0.3)
         }
     }
+
+    // MARK: - Actions
 
     private func handleRecordTap() {
         switch recorder.state {
@@ -186,9 +191,9 @@ struct RecordButton: View {
                         isRecording
                             ? Color(red: 1.0, green: 0.3, blue: 0.3)
                             : Color(red: 0.6, green: 0.5, blue: 0.4),
-                        lineWidth: 4
+                        lineWidth: 5
                     )
-                    .frame(width: 120, height: 120)
+                    .frame(width: 200, height: 200)
 
                 // Inner button
                 Circle()
@@ -197,25 +202,25 @@ struct RecordButton: View {
                             ? Color(red: 0.85, green: 0.2, blue: 0.2)
                             : Color(red: 0.8, green: 0.3, blue: 0.2)
                     )
-                    .frame(width: 96, height: 96)
+                    .frame(width: 168, height: 168)
                     .shadow(
                         color: isRecording
                             ? Color(red: 1.0, green: 0.2, blue: 0.2).opacity(0.6)
                             : .black.opacity(0.5),
-                        radius: isRecording ? 16 : 6,
+                        radius: isRecording ? 28 : 10,
                         x: 0,
-                        y: isRecording ? 0 : 4
+                        y: isRecording ? 0 : 6
                     )
 
                 // Icon
                 if isRecording {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 6)
                         .fill(.white)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 48, height: 48)
                 } else {
                     Circle()
                         .fill(.white)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 56, height: 56)
                 }
             }
         }
@@ -237,15 +242,17 @@ struct DropboxStatusView: View {
     @EnvironmentObject var dropboxManager: DropboxManager
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Circle()
                 .fill(dropboxManager.isAuthorized
                     ? Color(red: 0.4, green: 0.9, blue: 0.4)
                     : Color(red: 0.9, green: 0.4, blue: 0.4))
-                .frame(width: 6, height: 6)
+                .frame(width: 8, height: 8)
             Text(dropboxManager.isAuthorized ? "Dropbox connected" : "Dropbox not connected")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.gray)
+                .font(.system(size: 15, design: .monospaced))
+                .foregroundColor(dropboxManager.isAuthorized
+                    ? Color.white.opacity(0.5)
+                    : Color(red: 0.9, green: 0.5, blue: 0.4))
         }
     }
 }
