@@ -94,7 +94,8 @@ final class AudioRecorder: NSObject, ObservableObject {
 
     // MARK: - Helpers
 
-    /// Filename format: {year}-{day}-{month}-{unix}.mp3  (e.g. 2026-20-03-1742400000.mp3)
+    /// Temp recording file uses .m4a (correct container for AAC).
+    /// stopRecording renames it to .mp3 before upload.
     private func makeFilename() -> String {
         let now = Date()
         let calendar = Calendar.current
@@ -102,7 +103,7 @@ final class AudioRecorder: NSObject, ObservableObject {
         let day = calendar.component(.day, from: now)
         let month = calendar.component(.month, from: now)
         let unix = Int(now.timeIntervalSince1970)
-        return "\(year)-\(String(format: "%02d", day))-\(String(format: "%02d", month))-\(unix).mp3"
+        return "\(year)-\(String(format: "%02d", day))-\(String(format: "%02d", month))-\(unix).m4a"
     }
 
     private func audioSessionErrorDetail(_ error: Error) -> String {
