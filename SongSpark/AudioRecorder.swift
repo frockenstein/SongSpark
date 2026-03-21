@@ -70,32 +70,12 @@ final class AudioRecorder: NSObject, ObservableObject {
 
         recorder.stop()
         state = .uploading
-
-        // Rename .m4a temp file to .mp3 extension for Dropbox
-        // (file is actually AAC/M4A but we surface it as .mp3 per spec)
-        guard let sourceURL = currentFileURL else {
-            completion(nil)
-            return
-        }
-
-        let mp3URL = sourceURL.deletingPathExtension().appendingPathExtension("mp3")
-        do {
-            if FileManager.default.fileExists(atPath: mp3URL.path) {
-                try FileManager.default.removeItem(at: mp3URL)
-            }
-            try FileManager.default.moveItem(at: sourceURL, to: mp3URL)
-            lastFilename = mp3URL.lastPathComponent
-            currentFileURL = mp3URL
-            completion(mp3URL)
-        } catch {
-            completion(sourceURL) // fall back to original
-        }
+        completion(currentFileURL)
     }
 
     // MARK: - Helpers
 
-    /// Temp recording file uses .m4a (correct container for AAC).
-    /// stopRecording renames it to .mp3 before upload.
+    /// Filename format: {year}-{day}-{month}-{unix}.m4a  (AAC in MPEG-4 container)
     private func makeFilename() -> String {
         let now = Date()
         let calendar = Calendar.current
