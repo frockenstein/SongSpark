@@ -313,7 +313,16 @@ final class ClipStore: NSObject, ObservableObject {
 
 extension ClipStore: AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        Task { @MainActor in self.stop() }
+        Task { @MainActor in
+            guard let current = self.playingFilename,
+                  let idx = self.clips.firstIndex(where: { $0.filename == current }),
+                  idx + 1 < self.clips.count else {
+                self.stop()
+                return
+            }
+            self.stop()
+            await self.startPlayback(clip: self.clips[idx + 1])
+        }
     }
 
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
