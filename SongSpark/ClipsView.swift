@@ -22,7 +22,7 @@ struct ClipsView: View {
                 // ── Header ───────────────────────────────────────────────
                 HStack {
                     Text("CLIPS")
-                        .font(.system(size: 16, weight: .black, design: .monospaced))
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
                         .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
                         .tracking(4)
                     Spacer()
@@ -41,6 +41,15 @@ struct ClipsView: View {
 
                 // ── Tag filter bar ────────────────────────────────────────
                 if !clipStore.availableTags.isEmpty {
+                    Text("FILTER BY TAG")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .tracking(2)
+                        .foregroundColor(Color.white.opacity(0.3))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 2)
+
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             TagFilterPill(label: "ALL", isActive: activeTag == nil) {
@@ -73,7 +82,7 @@ struct ClipsView: View {
                             .font(.system(size: 36))
                             .foregroundColor(Color.white.opacity(0.15))
                         Text(activeTag == nil ? "No clips yet" : "No clips tagged \"\(activeTag!)\"")
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(.system(size: 16, design: .monospaced))
                             .foregroundColor(Color.white.opacity(0.3))
                     }
                     Spacer()
@@ -102,7 +111,7 @@ struct ClipsView: View {
                 if let error = clipStore.errorMessage {
                     HStack {
                         Text(error)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 13, design: .monospaced))
                             .foregroundColor(Color(red: 1.0, green: 0.4, blue: 0.4))
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
@@ -166,7 +175,7 @@ struct TagFilterPill: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .tracking(1)
                 .foregroundColor(isActive
                     ? Color(red: 0.12, green: 0.10, blue: 0.08)
@@ -231,17 +240,17 @@ struct ClipRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let desc = clip.description {
                     Text(desc)
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 17, weight: .semibold, design: .monospaced))
                         .foregroundColor(.white)
                         .lineLimit(1)
                 }
 
                 HStack(spacing: 6) {
                     Text(clip.formattedDay)
-                        .font(.system(size: clip.description == nil ? 14 : 11, design: .monospaced))
+                        .font(.system(size: clip.description == nil ? 17 : 13, design: .monospaced))
                         .foregroundColor(clip.description == nil ? .white : Color.white.opacity(0.45))
                     Text(clip.formattedTime)
-                        .font(.system(size: clip.description == nil ? 14 : 11, design: .monospaced))
+                        .font(.system(size: clip.description == nil ? 17 : 13, design: .monospaced))
                         .foregroundColor(Color.white.opacity(0.4))
                 }
 
@@ -250,7 +259,7 @@ struct ClipRow: View {
                     HStack(spacing: 4) {
                         ForEach(clip.tags.sorted(), id: \.self) { tag in
                             Text(tag)
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                 .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3).opacity(0.85))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
