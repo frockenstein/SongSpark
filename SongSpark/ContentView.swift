@@ -85,14 +85,16 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView().environmentObject(dropboxManager)
+            SettingsView()
+                .environmentObject(dropboxManager)
+                .environmentObject(clipStore)
         }
         .sheet(isPresented: $showClips) {
             ClipsView().environmentObject(clipStore)
         }
         .sheet(isPresented: $showNamingSheet) {
-            ClipNameSheet { description in
-                uploadPendingRecording(description: description)
+            ClipNameSheet(availableTags: clipStore.availableTags) { description, tags in
+                uploadPendingRecording(description: description, tags: tags)
             }
         }
     }
@@ -142,7 +144,7 @@ struct ContentView: View {
         }
     }
 
-    private func uploadPendingRecording(description: String?) {
+    private func uploadPendingRecording(description: String?, tags: [String]) {
         guard let fileURL = pendingUploadURL else { return }
         pendingUploadURL = nil
 
@@ -165,7 +167,7 @@ struct ContentView: View {
             switch result {
             case .success:
                 recorder.state = .done
-                Task { await clipStore.addClip(filename: filename) }
+                Task { await clipStore.addClip(filename: filename, tags: tags) }
             case .failure(let error):
                 recorder.errorMessage = error.localizedDescription
                 recorder.state = .error

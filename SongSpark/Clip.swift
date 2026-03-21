@@ -3,8 +3,23 @@ import Foundation
 struct Clip: Codable, Identifiable, Equatable {
     let filename: String
     let createdAt: Date
+    var tags: [String]
 
     var id: String { filename }
+
+    init(filename: String, createdAt: Date = Date(), tags: [String] = []) {
+        self.filename = filename
+        self.createdAt = createdAt
+        self.tags = tags
+    }
+
+    // Custom decoder so older JSON without a "tags" key decodes gracefully.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        filename  = try c.decode(String.self,  forKey: .filename)
+        createdAt = try c.decode(Date.self,    forKey: .createdAt)
+        tags      = (try? c.decode([String].self, forKey: .tags)) ?? []
+    }
 
     /// Description embedded after the 4th dash in the filename, hyphens displayed as spaces.
     /// e.g. "2026-20-03-1742482800-cool-riff.m4a" → "cool riff"

@@ -3,16 +3,23 @@ import SwiftUI
 struct ClipsView: View {
     @EnvironmentObject var clipStore: ClipStore
     @Environment(\.dismiss) private var dismiss
+
+    @State private var activeTag: String?   // nil = show all
     @State private var editingClip: Clip?
     @State private var deletingClip: Clip?
 
+    private var filteredClips: [Clip] {
+        guard let tag = activeTag else { return clipStore.clips }
+        return clipStore.clips.filter { $0.tags.contains(tag) }
+    }
+
     var body: some View {
         ZStack {
-            Color(red: 0.12, green: 0.10, blue: 0.08)
-                .ignoresSafeArea()
+            Color(red: 0.12, green: 0.10, blue: 0.08).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
+
+                // ── Header ───────────────────────────────────────────────
                 HStack {
                     Text("CLIPS")
                         .font(.system(size: 16, weight: .black, design: .monospaced))
@@ -28,22 +35,44 @@ struct ClipsView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
-                .padding(.bottom, 16)
+                .padding(.bottom, 12)
 
                 Divider().background(Color.white.opacity(0.08))
 
+                // ── Tag filter bar ────────────────────────────────────────
+                if !clipStore.availableTags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            TagFilterPill(label: "ALL", isActive: activeTag == nil) {
+                                activeTag = nil
+                            }
+                            ForEach(clipStore.availableTags, id: \.self) { tag in
+                                TagFilterPill(
+                                    label: tag.uppercased(),
+                                    isActive: activeTag == tag
+                                ) {
+                                    activeTag = (activeTag == tag) ? nil : tag
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                    }
+                    Divider().background(Color.white.opacity(0.08))
+                }
+
+                // ── Clip list ─────────────────────────────────────────────
                 if clipStore.isLoading {
                     Spacer()
-                    ProgressView()
-                        .tint(Color(red: 1.0, green: 0.75, blue: 0.3))
+                    ProgressView().tint(Color(red: 1.0, green: 0.75, blue: 0.3))
                     Spacer()
-                } else if clipStore.clips.isEmpty {
+                } else if filteredClips.isEmpty {
                     Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: "waveform.slash")
                             .font(.system(size: 36))
                             .foregroundColor(Color.white.opacity(0.15))
-                        Text("No clips yet")
+                        Text(activeTag == nil ? "No clips yet" : "No clips tagged \"\(activeTag!)\"")
                             .font(.system(size: 14, design: .monospaced))
                             .foregroundColor(Color.white.opacity(0.3))
                     }
@@ -51,9 +80,14 @@ struct ClipsView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(clipStore.clips) { clip in
-                                ClipRow(clip: clip, onEdit: { editingClip = clip }, onDelete: { deletingClip = clip })
-                                    .environmentObject(clipStore)
+                            ForEach(filteredClips) { clip in
+                                ClipRow(
+                                    clip: clip,
+                                    onEdit:   { editingClip   = clip },
+                                    onDelete: { deletingClip  = clip }
+                                )
+                                .environmentObject(clipStore)
+
                                 Divider()
                                     .background(Color.white.opacity(0.06))
                                     .padding(.leading, 64)
@@ -61,19 +95,10 @@ struct ClipsView: View {
                         }
                         .padding(.vertical, 8)
                     }
-                    .refreshable {
-                        await clipStore.loadClips()
-                    }
+                    .refreshable { await clipStore.loadClips() }
                 }
 
-                if clipStore.isLoading {
-                    HStack(spacing: 8) {
-                        ProgressView().tint(.gray).scaleEffect(0.7)
-                        Text("Saving...").font(.system(size: 11, design: .monospaced)).foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 6)
-                }
-
+                // ── Error banner ──────────────────────────────────────────
                 if let error = clipStore.errorMessage {
                     HStack {
                         Text(error)
@@ -82,9 +107,7 @@ struct ClipsView: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                         Spacer()
-                        Button {
-                            clipStore.errorMessage = nil
-                        } label: {
+                        Button { clipStore.errorMessage = nil } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.gray)
                                 .padding(.trailing, 16)
@@ -94,18 +117,30 @@ struct ClipsView: View {
                 }
             }
         }
+        // Keep ClipStore's currentQueue in sync with whatever is visible.
+        .onAppear { clipStore.currentQueue = filteredClips }
+        .onChange(of: activeTag)         { _, _ in clipStore.currentQueue = filteredClips }
+        .onChange(of: clipStore.clips)   { _, _ in clipStore.currentQueue = filteredClips }
+        // Edit sheet
         .sheet(item: $editingClip) { clip in
             ClipNameSheet(
-                title: "RENAME CLIP",
-                initialValue: clip.description ?? ""
-            ) { description in
-                Task { await clipStore.renameClip(clip, description: description) }
+                title: "EDIT CLIP",
+                initialValue: clip.description ?? "",
+                availableTags: clipStore.availableTags,
+                initialTags: clip.tags
+            ) { description, tags in
+                Task { await clipStore.renameClip(clip, description: description, tags: tags) }
             }
         }
-        .confirmationDialog("Delete this clip?", isPresented: Binding(
-            get: { deletingClip != nil },
-            set: { if !$0 { deletingClip = nil } }
-        ), titleVisibility: .visible) {
+        // Delete confirmation
+        .confirmationDialog(
+            "Delete this clip?",
+            isPresented: Binding(
+                get: { deletingClip != nil },
+                set: { if !$0 { deletingClip = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
             Button("Delete", role: .destructive) {
                 if let clip = deletingClip {
                     Task { await clipStore.deleteClip(clip) }
@@ -121,7 +156,38 @@ struct ClipsView: View {
     }
 }
 
-// MARK: - Clip Row
+// MARK: - Tag filter pill
+
+struct TagFilterPill: View {
+    let label: String
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .tracking(1)
+                .foregroundColor(isActive
+                    ? Color(red: 0.12, green: 0.10, blue: 0.08)
+                    : Color.white.opacity(0.5))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isActive
+                    ? Color(red: 1.0, green: 0.75, blue: 0.3)
+                    : Color.white.opacity(0.07))
+                .clipShape(Capsule())
+                .overlay(Capsule().strokeBorder(
+                    isActive ? Color.clear : Color.white.opacity(0.12),
+                    lineWidth: 1
+                ))
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isActive)
+    }
+}
+
+// MARK: - Clip row
 
 struct ClipRow: View {
     let clip: Clip
@@ -130,11 +196,14 @@ struct ClipRow: View {
     @EnvironmentObject var clipStore: ClipStore
 
     private var isPlaying: Bool { clipStore.playingFilename == clip.filename }
-    private var isThisDownloading: Bool { clipStore.isDownloading && clipStore.playingFilename == nil }
+    private var isThisDownloading: Bool {
+        clipStore.isDownloading && clipStore.playingFilename == nil
+    }
 
     var body: some View {
         HStack(spacing: 12) {
-            // Play / stop button
+
+            // Play / stop
             Button {
                 Task { await clipStore.togglePlayback(clip: clip) }
             } label: {
@@ -159,13 +228,14 @@ struct ClipRow: View {
             .buttonStyle(.plain)
 
             // Clip info
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 if let desc = clip.description {
                     Text(desc)
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
                         .foregroundColor(.white)
                         .lineLimit(1)
                 }
+
                 HStack(spacing: 6) {
                     Text(clip.formattedDay)
                         .font(.system(size: clip.description == nil ? 14 : 11, design: .monospaced))
@@ -175,6 +245,22 @@ struct ClipRow: View {
                         .foregroundColor(Color.white.opacity(0.4))
                 }
 
+                // Tags
+                if !clip.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(clip.tags.sorted(), id: \.self) { tag in
+                            Text(tag)
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3).opacity(0.85))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color(red: 1.0, green: 0.75, blue: 0.3).opacity(0.1))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+
+                // Playback progress bar
                 if isPlaying {
                     ProgressBar(progress: clipStore.playbackProgress)
                         .frame(height: 2)
@@ -213,7 +299,7 @@ struct ClipRow: View {
     }
 }
 
-// MARK: - Progress Bar
+// MARK: - Progress bar
 
 struct ProgressBar: View {
     let progress: Double
@@ -221,9 +307,7 @@ struct ProgressBar: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.white.opacity(0.12))
-
+                RoundedRectangle(cornerRadius: 1).fill(Color.white.opacity(0.12))
                 RoundedRectangle(cornerRadius: 1)
                     .fill(Color(red: 1.0, green: 0.4, blue: 0.4))
                     .frame(width: geo.size.width * progress)
@@ -234,6 +318,5 @@ struct ProgressBar: View {
 }
 
 #Preview {
-    ClipsView()
-        .environmentObject(ClipStore())
+    ClipsView().environmentObject(ClipStore())
 }

@@ -2,14 +2,29 @@ import AVFoundation
 import Foundation
 @preconcurrency import SwiftyDropbox
 
+// MARK: - Library data envelope (clips.json on disk)
+
+private struct LibraryData: Codable {
+    var version: Int = 1
+    var tags: [String]
+    var clips: [Clip]
+}
+
+// MARK: - Store
+
 @MainActor
 final class ClipStore: NSObject, ObservableObject {
     @Published var clips: [Clip] = []
+    @Published var availableTags: [String] = ["melodic", "slow", "acoustic", "lyrics"]
     @Published var isLoading = false
     @Published var playingFilename: String?
     @Published var playbackProgress: Double = 0
     @Published var isDownloading = false
     @Published var errorMessage: String?
+
+    /// The ordered list ClipsView is currently showing (respects active filter).
+    /// Auto-advance uses this so "next clip" matches whatever is on screen.
+    var currentQueue: [Clip] = []
 
     private var audioPlayer: AVAudioPlayer?
     private var progressTimer: Timer?
@@ -30,7 +45,6 @@ final class ClipStore: NSObject, ObservableObject {
                         guard let self else { continuation.resume(); return }
 
                         if let error {
-                            // 409 / path not found = no clips yet, not a real error
                             let desc = "\(error)"
                             if desc.contains("notFound") || desc.contains("not_found") || desc.contains("path/not_found") {
                                 self.clips = []
@@ -42,10 +56,15 @@ final class ClipStore: NSObject, ObservableObject {
                         }
 
                         if let (_, data) = response {
-                            do {
-                                self.clips = try Self.decoder.decode([Clip].self, from: data)
-                            } catch {
-                                self.errorMessage = "Could not parse clips: \(error.localizedDescription)"
+                            // Try new envelope format first, fall back to legacy flat array.
+                            if let library = try? Self.decoder.decode(LibraryData.self, from: data) {
+                                self.clips        = library.clips
+                                self.availableTags = library.tags
+                            } else if let legacy = try? Self.decoder.decode([Clip].self, from: data) {
+                                self.clips = legacy
+                                // keep default availableTags
+                            } else {
+                                self.errorMessage = "Could not parse clips."
                             }
                         }
                         continuation.resume()
@@ -54,51 +73,49 @@ final class ClipStore: NSObject, ObservableObject {
         }
     }
 
-    func addClip(filename: String, createdAt: Date = Date()) async {
-        let clip = Clip(filename: filename, createdAt: createdAt)
+    func addClip(filename: String, createdAt: Date = Date(), tags: [String] = []) async {
+        let clip = Clip(filename: filename, createdAt: createdAt, tags: tags)
         clips.insert(clip, at: 0)
         await saveMetadata()
     }
 
-    func renameClip(_ clip: Clip, description: String?) async {
+    func renameClip(_ clip: Clip, description: String?, tags: [String]) async {
         let newFilename = buildFilename(from: clip.filename, description: description)
-        guard newFilename != clip.filename else { return }
+        let filenameChanged = newFilename != clip.filename
 
         guard let client = DropboxClientsManager.authorizedClient else {
             errorMessage = "Not connected to Dropbox."
             return
         }
 
-        // Move in Dropbox
-        let moved = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            client.files.moveV2(fromPath: "/\(clip.filename)", toPath: "/\(newFilename)")
-                .response { [weak self] _, error in
-                    Task { @MainActor [weak self] in
-                        if let error {
-                            self?.errorMessage = "Rename failed: \(error.description)"
-                            continuation.resume(returning: false)
-                        } else {
-                            continuation.resume(returning: true)
+        if filenameChanged {
+            let moved = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                client.files.moveV2(fromPath: "/\(clip.filename)", toPath: "/\(newFilename)")
+                    .response { [weak self] _, error in
+                        Task { @MainActor [weak self] in
+                            if let error {
+                                self?.errorMessage = "Rename failed: \(error.description)"
+                                continuation.resume(returning: false)
+                            } else {
+                                continuation.resume(returning: true)
+                            }
                         }
                     }
-                }
+            }
+            guard moved else { return }
+
+            // Rename local cache if present
+            let oldCache = cacheURL(for: clip.filename)
+            let newCache = cacheURL(for: newFilename)
+            if FileManager.default.fileExists(atPath: oldCache.path) {
+                try? FileManager.default.moveItem(at: oldCache, to: newCache)
+            }
+
+            if playingFilename == clip.filename { stop() }
         }
 
-        guard moved else { return }
-
-        // Rename local cache file if present
-        let oldCache = cacheURL(for: clip.filename)
-        let newCache = cacheURL(for: newFilename)
-        if FileManager.default.fileExists(atPath: oldCache.path) {
-            try? FileManager.default.moveItem(at: oldCache, to: newCache)
-        }
-
-        // If this clip was playing, stop so we don't hold a stale reference
-        if playingFilename == clip.filename { stop() }
-
-        // Update in-memory array and persist
         if let idx = clips.firstIndex(of: clip) {
-            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt)
+            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt, tags: tags)
         }
         await saveMetadata()
     }
@@ -125,19 +142,32 @@ final class ClipStore: NSObject, ObservableObject {
 
         guard deleted else { return }
 
-        // Remove local cache
-        let cache = cacheURL(for: clip.filename)
-        try? FileManager.default.removeItem(at: cache)
-
+        try? FileManager.default.removeItem(at: cacheURL(for: clip.filename))
         if playingFilename == clip.filename { stop() }
-
         clips.removeAll { $0.id == clip.id }
+        await saveMetadata()
+    }
+
+    // MARK: - Tag management
+
+    func addTag(_ tag: String) async {
+        let trimmed = tag.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !availableTags.contains(trimmed) else { return }
+        availableTags.append(trimmed)
+        await saveMetadata()
+    }
+
+    func removeTag(_ tag: String) async {
+        availableTags.removeAll { $0 == tag }
+        // Strip removed tag from every clip
+        for i in clips.indices {
+            clips[i].tags.removeAll { $0 == tag }
+        }
         await saveMetadata()
     }
 
     // MARK: - Filename helpers
 
-    /// Sanitize a user-entered description for use in a filename.
     static func sanitize(_ text: String) -> String {
         text.trimmingCharacters(in: .whitespaces)
             .lowercased()
@@ -146,10 +176,8 @@ final class ClipStore: NSObject, ObservableObject {
             .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
     }
 
-    /// Rebuild a filename, replacing or removing the description part.
-    /// Format: {year}-{day}-{month}-{unix}[-{description}].m4a
     private func buildFilename(from original: String, description: String?) -> String {
-        let base = (original as NSString).deletingPathExtension
+        let base  = (original as NSString).deletingPathExtension
         let parts = base.components(separatedBy: "-")
         let timestamp = parts.prefix(4).joined(separator: "-")
         if let desc = description, !desc.isEmpty {
@@ -162,9 +190,10 @@ final class ClipStore: NSObject, ObservableObject {
     private func saveMetadata() async {
         guard let client = DropboxClientsManager.authorizedClient else { return }
 
+        let library = LibraryData(tags: availableTags, clips: clips)
         let data: Data
         do {
-            data = try Self.encoder.encode(clips)
+            data = try Self.encoder.encode(library)
         } catch {
             errorMessage = "Could not encode clips: \(error.localizedDescription)"
             return
@@ -175,7 +204,7 @@ final class ClipStore: NSObject, ObservableObject {
                 .response { [weak self] _, error in
                     Task { @MainActor [weak self] in
                         if let error {
-                            self?.errorMessage = "Could not save clips metadata: \(error.description)"
+                            self?.errorMessage = "Could not save metadata: \(error.description)"
                         }
                         continuation.resume()
                     }
@@ -186,10 +215,7 @@ final class ClipStore: NSObject, ObservableObject {
     // MARK: - Playback
 
     func togglePlayback(clip: Clip) async {
-        if playingFilename == clip.filename {
-            stop()
-            return
-        }
+        if playingFilename == clip.filename { stop(); return }
         stop()
         await startPlayback(clip: clip)
     }
@@ -218,7 +244,6 @@ final class ClipStore: NSObject, ObservableObject {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
-
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.delegate = self
             audioPlayer?.play()
@@ -233,9 +258,7 @@ final class ClipStore: NSObject, ObservableObject {
 
     private func ensureLocalFile(for clip: Clip) async throws -> URL {
         let dest = cacheURL(for: clip.filename)
-        if FileManager.default.fileExists(atPath: dest.path) {
-            return dest
-        }
+        if FileManager.default.fileExists(atPath: dest.path) { return dest }
         return try await downloadFile(filename: clip.filename, to: dest)
     }
 
@@ -243,13 +266,10 @@ final class ClipStore: NSObject, ObservableObject {
         guard let client = DropboxClientsManager.authorizedClient else {
             throw ClipError.notAuthorized
         }
-
-        // Create cache directory if needed
         try FileManager.default.createDirectory(
             at: destination.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-
         return try await withCheckedThrowingContinuation { continuation in
             client.files.download(path: "/\(filename)")
                 .response { response, error in
@@ -297,8 +317,8 @@ final class ClipStore: NSObject, ObservableObject {
 
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
-        e.dateEncodingStrategy = .secondsSince1970
-        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        e.dateEncodingStrategy  = .secondsSince1970
+        e.outputFormatting      = [.prettyPrinted, .sortedKeys]
         return e
     }()
 
@@ -312,16 +332,18 @@ final class ClipStore: NSObject, ObservableObject {
 // MARK: - AVAudioPlayerDelegate
 
 extension ClipStore: AVAudioPlayerDelegate {
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully _: Bool) {
         Task { @MainActor in
-            guard let current = self.playingFilename,
-                  let idx = self.clips.firstIndex(where: { $0.filename == current }),
-                  idx + 1 < self.clips.count else {
+            guard let current = self.playingFilename else { self.stop(); return }
+            // Use currentQueue (filtered view) if populated, otherwise fall back to all clips.
+            let queue = self.currentQueue.isEmpty ? self.clips : self.currentQueue
+            guard let idx = queue.firstIndex(where: { $0.filename == current }),
+                  idx + 1 < queue.count else {
                 self.stop()
                 return
             }
             self.stop()
-            await self.startPlayback(clip: self.clips[idx + 1])
+            await self.startPlayback(clip: queue[idx + 1])
         }
     }
 
@@ -341,8 +363,8 @@ enum ClipError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notAuthorized: return "Not connected to Dropbox."
-        case .downloadFailed(let msg): return "Download failed: \(msg)"
+        case .notAuthorized:          return "Not connected to Dropbox."
+        case .downloadFailed(let m):  return "Download failed: \(m)"
         }
     }
 }
