@@ -42,3 +42,6 @@ fastlane/test_output
 # Environment
 .env
 *.env.local
+
+# Secrets — never commit real keys
+Config/Secrets.xcconfig

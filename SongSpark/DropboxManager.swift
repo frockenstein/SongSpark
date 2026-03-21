@@ -5,18 +5,24 @@ import SwiftyDropbox
 // 1. Create a Dropbox app at https://www.dropbox.com/developers/apps
 //    - Choose "Scoped access" → "App folder"
 //    - Add permission: files.content.write
-// 2. Replace DROPBOX_APP_KEY below with your app key
-// 3. In Info.plist add URL scheme: db-<YOUR_APP_KEY>
-// 4. In Dropbox app console, add OAuth redirect URI: db-<YOUR_APP_KEY>://2/token
+// 2. Copy Config/Secrets.xcconfig.example → Config/Secrets.xcconfig
+//    and set DROPBOX_APP_KEY = <your key>
+// 3. Dropbox OAuth redirect URI in app console: db-<YOUR_APP_KEY>://2/token
 
-private let dropboxAppKey = "DROPBOX_APP_KEY"
+private func loadDropboxAppKey() -> String {
+    guard let key = Bundle.main.object(forInfoDictionaryKey: "DropboxAppKey") as? String,
+          !key.isEmpty, key != "your_app_key_here" else {
+        fatalError("Missing Dropbox app key. Copy Config/Secrets.xcconfig.example → Config/Secrets.xcconfig and set DROPBOX_APP_KEY.")
+    }
+    return key
+}
 
 @MainActor
 final class DropboxManager: ObservableObject {
     @Published var isAuthorized: Bool = false
 
     init() {
-        DropboxClientsManager.setupWithAppKey(dropboxAppKey)
+        DropboxClientsManager.setupWithAppKey(loadDropboxAppKey())
         isAuthorized = DropboxClientsManager.authorizedClient != nil
     }
 

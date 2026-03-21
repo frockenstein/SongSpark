@@ -16,6 +16,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2DBE26205292DDBCF0B71C38 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		54EF44B53683ACAFBFA67B32 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		79ED68C0DD2A9C4C478B936A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AE7527303EEB19C48E2A3F6C /* SongSparkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSparkApp.swift; sourceTree = "<group>"; };
@@ -37,9 +38,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		30FEA99073D362DCEE0A89D2 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				2DBE26205292DDBCF0B71C38 /* Secrets.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		3E97E3FCDCDBFE3B4AB42EF3 = {
 			isa = PBXGroup;
 			children = (
+				30FEA99073D362DCEE0A89D2 /* Config */,
 				F8212E5D7760ED502CAC1B45 /* SongSpark */,
 				F3A44A7EE9E3F92E7B146095 /* Products */,
 			);
@@ -148,6 +158,7 @@
 /* Begin XCBuildConfiguration section */
 		040CEF95824F47D277E5D3D6 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2DBE26205292DDBCF0B71C38 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -166,6 +177,7 @@
 		};
 		35A4B1A4EC8841CFB9C4E496 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2DBE26205292DDBCF0B71C38 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
