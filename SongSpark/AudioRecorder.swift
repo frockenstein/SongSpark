@@ -1,0 +1,124 @@
+import AVFoundation
+import Foundation
+
+enum RecorderState: Equatable {
+    case idle
+    case recording
+    case uploading
+    case done
+    case error
+}
+
+@MainActor
+final class AudioRecorder: NSObject, ObservableObject {
+    @Published var state: RecorderState = .idle
+    @Published var lastFilename: String?
+    @Published var uploadError: String?
+
+    private var audioRecorder: AVAudioRecorder?
+    private var currentFileURL: URL?
+
+    // MARK: - Recording
+
+    func startRecording() {
+        Task {
+            guard await requestMicrophonePermission() else {
+                state = .error
+                uploadError = "Microphone access denied."
+                return
+            }
+            beginRecording()
+        }
+    }
+
+    private func beginRecording() {
+        let filename = makeFilename()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try session.setActive(true)
+
+            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+            audioRecorder?.delegate = self
+            audioRecorder?.record()
+
+            currentFileURL = url
+            lastFilename = filename
+            state = .recording
+        } catch {
+            state = .error
+            uploadError = error.localizedDescription
+        }
+    }
+
+    func stopRecording(completion: @escaping (URL?) -> Void) {
+        guard let recorder = audioRecorder, recorder.isRecording else {
+            completion(nil)
+            return
+        }
+
+        recorder.stop()
+        state = .uploading
+
+        // Rename .m4a temp file to .mp3 extension for Dropbox
+        // (file is actually AAC/M4A but we surface it as .mp3 per spec)
+        guard let sourceURL = currentFileURL else {
+            completion(nil)
+            return
+        }
+
+        let mp3URL = sourceURL.deletingPathExtension().appendingPathExtension("mp3")
+        do {
+            if FileManager.default.fileExists(atPath: mp3URL.path) {
+                try FileManager.default.removeItem(at: mp3URL)
+            }
+            try FileManager.default.moveItem(at: sourceURL, to: mp3URL)
+            lastFilename = mp3URL.lastPathComponent
+            currentFileURL = mp3URL
+            completion(mp3URL)
+        } catch {
+            completion(sourceURL) // fall back to original
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Filename format: {year}-{day}-{month}-{unix}.mp3  (e.g. 2026-20-03-1742400000.mp3)
+    private func makeFilename() -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: now)
+        let day = calendar.component(.day, from: now)
+        let month = calendar.component(.month, from: now)
+        let unix = Int(now.timeIntervalSince1970)
+        return "\(year)-\(String(format: "%02d", day))-\(String(format: "%02d", month))-\(unix).mp3"
+    }
+
+    private func requestMicrophonePermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
+    }
+}
+
+// MARK: - AVAudioRecorderDelegate
+
+extension AudioRecorder: AVAudioRecorderDelegate {
+    nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        Task { @MainActor in
+            self.state = .error
+            self.uploadError = error?.localizedDescription ?? "Encoding error"
+        }
+    }
+}

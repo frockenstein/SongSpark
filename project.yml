@@ -1,0 +1,43 @@
+name: SongSpark
+options:
+  bundleIdPrefix: com.songspark
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  SwiftyDropbox:
+    url: https://github.com/dropbox/SwiftyDropbox
+    from: "10.0.0"
+
+targets:
+  SongSpark:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - SongSpark
+    resources:
+      - SongSpark/Assets.xcassets
+    info:
+      path: SongSpark/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSMicrophoneUsageDescription: "SongSpark needs microphone access to record your musical ideas."
+        NSLocationWhenInUseUsageDescription: "SongSpark stamps your recordings with GPS location."
+        UIBackgroundModes:
+          - audio
+        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "1"
+    dependencies:
+      - package: SwiftyDropbox
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.songspark.app
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: SongSpark/Info.plist
