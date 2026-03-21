@@ -142,7 +142,6 @@ struct ClipNameSheet: View {
         }
         .presentationDetents([availableTags.isEmpty ? .height(240) : .height(370)])
         .presentationDragIndicator(.visible)
-        .onAppear { focused = true }
     }
 
     private func commit() {
