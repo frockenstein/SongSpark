@@ -1,5 +1,6 @@
 import Foundation
-import SwiftyDropbox
+import UIKit
+@preconcurrency import SwiftyDropbox
 
 // MARK: - Setup
 // 1. Create a Dropbox app at https://www.dropbox.com/developers/apps
