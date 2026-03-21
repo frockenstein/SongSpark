@@ -55,8 +55,10 @@ final class AudioRecorder: NSObject, ObservableObject {
             lastFilename = filename
             state = .recording
         } catch {
+            let detail = audioSessionErrorDetail(error)
+            assertionFailure("AudioRecorder.beginRecording failed: \(detail)")
             state = .error
-            errorMessage = error.localizedDescription
+            errorMessage = detail
         }
     }
 
@@ -103,6 +105,13 @@ final class AudioRecorder: NSObject, ObservableObject {
         return "\(year)-\(String(format: "%02d", day))-\(String(format: "%02d", month))-\(unix).mp3"
     }
 
+    private func audioSessionErrorDetail(_ error: Error) -> String {
+        let ns = error as NSError
+        // AVFoundation/CoreAudio OSStatus codes are four-char codes or negative ints.
+        // Surface domain + code + description so the raw value is visible in Xcode.
+        return "[\(ns.domain) \(ns.code)] \(ns.localizedDescription)"
+    }
+
     private func requestMicrophonePermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
@@ -116,9 +125,17 @@ final class AudioRecorder: NSObject, ObservableObject {
 
 extension AudioRecorder: AVAudioRecorderDelegate {
     nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        let detail: String
+        if let error {
+            let ns = error as NSError
+            detail = "[\(ns.domain) \(ns.code)] \(ns.localizedDescription)"
+        } else {
+            detail = "Audio encoding error (no details)"
+        }
+        assertionFailure("audioRecorderEncodeErrorDidOccur: \(detail)")
         Task { @MainActor in
             self.state = .error
-            self.errorMessage = error?.localizedDescription ?? "Audio encoding error"
+            self.errorMessage = detail
         }
     }
 }
