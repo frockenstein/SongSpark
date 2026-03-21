@@ -36,6 +36,8 @@
 		D94C8AB497E439961DA3F7BC /* SongSpark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SongSpark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E356DF5EFD2C0716AFF71E34 /* ClipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipsView.swift; sourceTree = "<group>"; };
 		E670ED6A499FC5EB914D0CFF /* DropboxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropboxManager.swift; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550011 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = CLAUDE.md; path = ../CLAUDE.md; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550012 /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = TODO.md; path = ../TODO.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,9 +60,19 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		BB11CC22DD33EE44FF550013 /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				BB11CC22DD33EE44FF550011 /* CLAUDE.md */,
+				BB11CC22DD33EE44FF550012 /* TODO.md */,
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
 		3E97E3FCDCDBFE3B4AB42EF3 = {
 			isa = PBXGroup;
 			children = (
+				BB11CC22DD33EE44FF550013 /* Documentation */,
 				30FEA99073D362DCEE0A89D2 /* Config */,
 				F8212E5D7760ED502CAC1B45 /* SongSpark */,
 				F3A44A7EE9E3F92E7B146095 /* Products */,
