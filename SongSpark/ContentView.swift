@@ -72,7 +72,10 @@ struct ContentView: View {
                 Spacer()
 
                 // ── Record button ─────────────────────────────────────────
-                RecordButton(isRecording: recorder.state == .recording) {
+                RecordButton(
+                    isRecording: recorder.state == .recording,
+                    audioLevel: recorder.audioLevel
+                ) {
                     handleRecordTap()
                 }
 
@@ -188,6 +191,7 @@ struct ContentView: View {
 
 struct RecordButton: View {
     let isRecording: Bool
+    let audioLevel: Float   // 0–1, live metered level while recording
     let action: () -> Void
 
     @State private var isPressing = false
@@ -205,7 +209,7 @@ struct RecordButton: View {
                     )
                     .frame(width: 200, height: 200)
 
-                // Inner button
+                // Inner button — scales and glows with live audio level
                 Circle()
                     .fill(
                         isRecording
@@ -213,14 +217,17 @@ struct RecordButton: View {
                             : Color(red: 0.8, green: 0.3, blue: 0.2)
                     )
                     .frame(width: 168, height: 168)
+                    .scaleEffect(isRecording ? 1.0 + CGFloat(audioLevel) * 0.08 : 1.0)
                     .shadow(
                         color: isRecording
-                            ? Color(red: 1.0, green: 0.2, blue: 0.2).opacity(0.6)
+                            ? Color(red: 1.0, green: 0.2, blue: 0.2)
+                                .opacity(0.35 + Double(audioLevel) * 0.45)
                             : .black.opacity(0.5),
-                        radius: isRecording ? 28 : 10,
+                        radius: isRecording ? 16 + CGFloat(audioLevel) * 24 : 10,
                         x: 0,
                         y: isRecording ? 0 : 6
                     )
+                    .animation(.easeOut(duration: 0.08), value: audioLevel)
 
                 // Icon
                 if isRecording {
@@ -271,4 +278,11 @@ struct DropboxStatusView: View {
     ContentView()
         .environmentObject(DropboxManager())
         .environmentObject(ClipStore())
+}
+
+#Preview("RecordButton") {
+    ZStack {
+        Color(red: 0.12, green: 0.10, blue: 0.08).ignoresSafeArea()
+        RecordButton(isRecording: true, audioLevel: 0.6) {}
+    }
 }

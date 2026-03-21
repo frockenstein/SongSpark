@@ -14,9 +14,12 @@ final class AudioRecorder: NSObject, ObservableObject {
     @Published var state: RecorderState = .idle
     @Published var lastFilename: String?
     @Published var errorMessage: String?
+    /// Normalised audio level while recording (0 = silence, 1 = peak). Smoothed with fast attack / slow decay.
+    @Published var audioLevel: Float = 0
 
     private var audioRecorder: AVAudioRecorder?
     private var currentFileURL: URL?
+    private var meterTimer: Timer?
 
     // MARK: - Recording
 
@@ -49,11 +52,13 @@ final class AudioRecorder: NSObject, ObservableObject {
 
             audioRecorder = try AVAudioRecorder(url: url, settings: settings)
             audioRecorder?.delegate = self
+            audioRecorder?.isMeteringEnabled = true
             audioRecorder?.record()
 
             currentFileURL = url
             lastFilename = filename
             state = .recording
+            startMeterTimer()
         } catch {
             let detail = audioSessionErrorDetail(error)
             assertionFailure("AudioRecorder.beginRecording failed: \(detail)")
@@ -67,9 +72,36 @@ final class AudioRecorder: NSObject, ObservableObject {
             completion(nil)
             return
         }
-
+        stopMeterTimer()
         recorder.stop()
         completion(currentFileURL)
+    }
+
+    // MARK: - Metering
+
+    private func startMeterTimer() {
+        // ~30 fps is plenty for a smooth visual response
+        meterTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let rec = self.audioRecorder, rec.isRecording else { return }
+                rec.updateMeters()
+                // averagePower returns dB in roughly -160…0; map -50…0 dB → 0…1
+                let db  = rec.averagePower(forChannel: 0)
+                let raw = max(0, min(1, (db + 50) / 50))
+                // Fast attack, slow decay — feels like a proper VU meter
+                if raw > self.audioLevel {
+                    self.audioLevel += (raw - self.audioLevel) * 0.75
+                } else {
+                    self.audioLevel += (raw - self.audioLevel) * 0.20
+                }
+            }
+        }
+    }
+
+    private func stopMeterTimer() {
+        meterTimer?.invalidate()
+        meterTimer = nil
+        audioLevel = 0
     }
 
     // MARK: - Helpers
