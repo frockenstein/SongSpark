@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var dropboxManager: DropboxManager
     @StateObject private var recorder = AudioRecorder()
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -11,15 +12,28 @@ struct ContentView: View {
 
             VStack(spacing: 40) {
                 // Header
-                VStack(spacing: 4) {
-                    Text("SONGSPARK")
-                        .font(.system(size: 24, weight: .black, design: .monospaced))
-                        .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
-                        .tracking(6)
+                ZStack {
+                    VStack(spacing: 4) {
+                        Text("SONGSPARK")
+                            .font(.system(size: 24, weight: .black, design: .monospaced))
+                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3))
+                            .tracking(6)
 
-                    Text("v0.1")
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
-                        .foregroundColor(.gray)
+                        Text("v0.1")
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
+                            .foregroundColor(.gray)
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 18))
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
 
                 // Status display
@@ -50,11 +64,15 @@ struct ContentView: View {
                     handleRecordTap()
                 }
 
-                // Dropbox status / auth
+                // Dropbox status indicator
                 DropboxStatusView()
                     .environmentObject(dropboxManager)
             }
             .padding()
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(dropboxManager)
         }
     }
 
@@ -174,29 +192,15 @@ struct DropboxStatusView: View {
     @EnvironmentObject var dropboxManager: DropboxManager
 
     var body: some View {
-        VStack(spacing: 8) {
-            if dropboxManager.isAuthorized {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color(red: 0.4, green: 0.9, blue: 0.4))
-                        .frame(width: 6, height: 6)
-                    Text("Dropbox connected")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.gray)
-                }
-            } else {
-                Button("Connect Dropbox") {
-                    dropboxManager.startAuth()
-                }
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color(red: 0.3, green: 0.6, blue: 1.0), lineWidth: 1)
-                )
-            }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(dropboxManager.isAuthorized
+                    ? Color(red: 0.4, green: 0.9, blue: 0.4)
+                    : Color(red: 0.9, green: 0.4, blue: 0.4))
+                .frame(width: 6, height: 6)
+            Text(dropboxManager.isAuthorized ? "Dropbox connected" : "Dropbox not connected")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
         }
     }
 }

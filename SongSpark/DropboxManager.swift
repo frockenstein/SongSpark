@@ -21,10 +21,18 @@ private func loadDropboxAppKey() -> String {
 @MainActor
 final class DropboxManager: ObservableObject {
     @Published var isAuthorized: Bool = false
+    @Published var accountName: String?
+    @Published var accountEmail: String?
+
+    // App folder scope always stores at Dropbox/Apps/<app-name>/
+    let folderPath = "Dropbox / Apps / SongSpark"
 
     init() {
         DropboxClientsManager.setupWithAppKey(loadDropboxAppKey())
-        isAuthorized = DropboxClientsManager.authorizedClient != nil
+        if DropboxClientsManager.authorizedClient != nil {
+            isAuthorized = true
+            fetchAccountInfo()
+        }
     }
 
     // MARK: - Auth
@@ -56,6 +64,7 @@ final class DropboxManager: ObservableObject {
                 switch result {
                 case .success:
                     self.isAuthorized = DropboxClientsManager.authorizedClient != nil
+                    self.fetchAccountInfo()
                 case .cancel:
                     print("Dropbox auth cancelled")
                 case .error(_, let description):
@@ -66,6 +75,26 @@ final class DropboxManager: ObservableObject {
             }
         }
         DropboxClientsManager.handleRedirectURL(url, includeBackgroundClient: false, completion: oauthCompletion)
+    }
+
+    func unlink() {
+        DropboxClientsManager.unlinkClients()
+        isAuthorized = false
+        accountName = nil
+        accountEmail = nil
+    }
+
+    // MARK: - Account
+
+    func fetchAccountInfo() {
+        guard let client = DropboxClientsManager.authorizedClient else { return }
+        client.users.getCurrentAccount().response { [weak self] account, error in
+            guard let self, let account else { return }
+            Task { @MainActor in
+                self.accountName = account.name.displayName
+                self.accountEmail = account.email
+            }
+        }
     }
 
     // MARK: - Upload
@@ -89,7 +118,6 @@ final class DropboxManager: ObservableObject {
                 if let error {
                     completion(.failure(DropboxError.uploadFailed(error.description)))
                 } else {
-                    // Clean up temp file after successful upload
                     try? FileManager.default.removeItem(at: fileURL)
                     completion(.success(()))
                 }
