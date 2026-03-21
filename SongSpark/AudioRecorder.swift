@@ -13,7 +13,7 @@ enum RecorderState: Equatable {
 final class AudioRecorder: NSObject, ObservableObject {
     @Published var state: RecorderState = .idle
     @Published var lastFilename: String?
-    @Published var uploadError: String?
+    @Published var errorMessage: String?
 
     private var audioRecorder: AVAudioRecorder?
     private var currentFileURL: URL?
@@ -24,7 +24,7 @@ final class AudioRecorder: NSObject, ObservableObject {
         Task {
             guard await requestMicrophonePermission() else {
                 state = .error
-                uploadError = "Microphone access denied."
+                errorMessage = "Microphone access denied. Enable it in Settings."
                 return
             }
             beginRecording()
@@ -56,7 +56,7 @@ final class AudioRecorder: NSObject, ObservableObject {
             state = .recording
         } catch {
             state = .error
-            uploadError = error.localizedDescription
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -118,7 +118,7 @@ extension AudioRecorder: AVAudioRecorderDelegate {
     nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         Task { @MainActor in
             self.state = .error
-            self.uploadError = error?.localizedDescription ?? "Encoding error"
+            self.errorMessage = error?.localizedDescription ?? "Audio encoding error"
         }
     }
 }

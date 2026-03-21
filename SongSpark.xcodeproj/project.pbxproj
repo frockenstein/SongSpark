@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -22,7 +22,7 @@
 		AE7527303EEB19C48E2A3F6C /* SongSparkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSparkApp.swift; sourceTree = "<group>"; };
 		B2D3B47E45581AA41B804226 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BFB12967FF8743A43243E7D1 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
-		D94C8AB497E439961DA3F7BC /* SongSpark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SongSpark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D94C8AB497E439961DA3F7BC /* SongSpark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SongSpark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E670ED6A499FC5EB914D0CFF /* DropboxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropboxManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -121,7 +121,6 @@
 			packageReferences = (
 				F8AE2AA524866DBD2A4D785C /* XCRemoteSwiftPackageReference "SwiftyDropbox" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -162,6 +161,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = EBUBW4Q4F8;
 				INFOPLIST_FILE = SongSpark/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -181,6 +181,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = EBUBW4Q4F8;
 				INFOPLIST_FILE = SongSpark/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

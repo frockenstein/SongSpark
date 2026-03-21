@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var dropboxManager: DropboxManager
     @StateObject private var recorder = AudioRecorder()
-    @State private var showDropboxError = false
 
     var body: some View {
         ZStack {
@@ -30,7 +29,13 @@ struct ContentView: View {
                         .foregroundColor(statusColor)
                         .animation(.easeInOut, value: recorder.state)
 
-                    if let filename = recorder.lastFilename {
+                    if recorder.state == .error, let errorMessage = recorder.errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(Color(red: 1.0, green: 0.4, blue: 0.4))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    } else if let filename = recorder.lastFilename {
                         Text(filename)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.gray)
@@ -38,7 +43,7 @@ struct ContentView: View {
                             .truncationMode(.middle)
                     }
                 }
-                .frame(height: 50)
+                .frame(minHeight: 50)
 
                 // Record button
                 RecordButton(isRecording: recorder.state == .recording) {
@@ -51,14 +56,6 @@ struct ContentView: View {
             }
             .padding()
         }
-        .alert("Upload Failed", isPresented: $showDropboxError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(recorder.uploadError ?? "Unknown error")
-        }
-        .onChange(of: recorder.uploadError) { _, error in
-            showDropboxError = error != nil
-        }
     }
 
     private var statusText: String {
@@ -67,7 +64,7 @@ struct ContentView: View {
         case .recording: return "● REC"
         case .uploading: return "UPLOADING..."
         case .done: return "SAVED ✓"
-        case .error: return "ERROR"
+        case .error: return "ERROR —"
         }
     }
 
@@ -84,19 +81,22 @@ struct ContentView: View {
     private func handleRecordTap() {
         switch recorder.state {
         case .idle, .done, .error:
+            recorder.errorMessage = nil
             recorder.startRecording()
         case .recording:
             recorder.stopRecording { fileURL in
-                guard let fileURL else { return }
+                guard let fileURL else {
+                    recorder.errorMessage = "Failed to finalize the recording file."
+                    recorder.state = .error
+                    return
+                }
                 dropboxManager.upload(fileURL: fileURL) { result in
-                    DispatchQueue.main.async {
-                        switch result {
-                        case .success:
-                            recorder.state = .done
-                        case .failure(let error):
-                            recorder.uploadError = error.localizedDescription
-                            recorder.state = .error
-                        }
+                    switch result {
+                    case .success:
+                        recorder.state = .done
+                    case .failure(let error):
+                        recorder.errorMessage = error.localizedDescription
+                        recorder.state = .error
                     }
                 }
             }
