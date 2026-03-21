@@ -2,8 +2,10 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var dropboxManager: DropboxManager
+    @EnvironmentObject var clipStore: ClipStore
     @StateObject private var recorder = AudioRecorder()
     @State private var showSettings = false
+    @State private var showClips = false
 
     var body: some View {
         ZStack {
@@ -25,6 +27,13 @@ struct ContentView: View {
                     }
 
                     HStack {
+                        Button {
+                            showClips = true
+                        } label: {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 18))
+                                .foregroundColor(.gray)
+                        }
                         Spacer()
                         Button {
                             showSettings = true
@@ -74,6 +83,10 @@ struct ContentView: View {
             SettingsView()
                 .environmentObject(dropboxManager)
         }
+        .sheet(isPresented: $showClips) {
+            ClipsView()
+                .environmentObject(clipStore)
+        }
     }
 
     private var statusText: String {
@@ -108,10 +121,12 @@ struct ContentView: View {
                     recorder.state = .error
                     return
                 }
+                let filename = fileURL.lastPathComponent
                 dropboxManager.upload(fileURL: fileURL) { result in
                     switch result {
                     case .success:
                         recorder.state = .done
+                        Task { await clipStore.addClip(filename: filename) }
                     case .failure(let error):
                         recorder.errorMessage = error.localizedDescription
                         recorder.state = .error
@@ -208,4 +223,5 @@ struct DropboxStatusView: View {
 #Preview {
     ContentView()
         .environmentObject(DropboxManager())
+        .environmentObject(ClipStore())
 }

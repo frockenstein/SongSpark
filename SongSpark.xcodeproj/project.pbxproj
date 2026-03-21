@@ -11,20 +11,26 @@
 		4648764A9A09462EC7EB5C39 /* DropboxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E670ED6A499FC5EB914D0CFF /* DropboxManager.swift */; };
 		4EB8BEE322695202B1592C91 /* SwiftyDropbox in Frameworks */ = {isa = PBXBuildFile; productRef = CFACE4BB53368EE3AD9AEA6D /* SwiftyDropbox */; };
 		9AD3301071E2CA9C67C1B8F6 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB12967FF8743A43243E7D1 /* AudioRecorder.swift */; };
+		ACA64F1D2BA856728F323BE2 /* ClipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E356DF5EFD2C0716AFF71E34 /* ClipsView.swift */; };
 		B1DE4695C0BBB1EAB92AB8E4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79ED68C0DD2A9C4C478B936A /* ContentView.swift */; };
 		B6B14D5A8FD5F2815BAAB52F /* SongSparkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7527303EEB19C48E2A3F6C /* SongSparkApp.swift */; };
 		BFC96E44325D4B7AEC940B30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2D3B47E45581AA41B804226 /* Assets.xcassets */; };
+		C24F45854857ECBAA9539CB3 /* Clip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384854F822B394674388306E /* Clip.swift */; };
+		E5AB6705F5457F5C82CEDA58 /* ClipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB945DEF635B2D7BCAC067 /* ClipStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		136371FDA8A3B3753BD34448 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2DBE26205292DDBCF0B71C38 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		384854F822B394674388306E /* Clip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clip.swift; sourceTree = "<group>"; };
 		54EF44B53683ACAFBFA67B32 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5EEB945DEF635B2D7BCAC067 /* ClipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipStore.swift; sourceTree = "<group>"; };
 		79ED68C0DD2A9C4C478B936A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AE7527303EEB19C48E2A3F6C /* SongSparkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSparkApp.swift; sourceTree = "<group>"; };
 		B2D3B47E45581AA41B804226 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BFB12967FF8743A43243E7D1 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		D94C8AB497E439961DA3F7BC /* SongSpark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SongSpark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E356DF5EFD2C0716AFF71E34 /* ClipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipsView.swift; sourceTree = "<group>"; };
 		E670ED6A499FC5EB914D0CFF /* DropboxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropboxManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -70,6 +76,9 @@
 			children = (
 				B2D3B47E45581AA41B804226 /* Assets.xcassets */,
 				BFB12967FF8743A43243E7D1 /* AudioRecorder.swift */,
+				384854F822B394674388306E /* Clip.swift */,
+				5EEB945DEF635B2D7BCAC067 /* ClipStore.swift */,
+				E356DF5EFD2C0716AFF71E34 /* ClipsView.swift */,
 				79ED68C0DD2A9C4C478B936A /* ContentView.swift */,
 				E670ED6A499FC5EB914D0CFF /* DropboxManager.swift */,
 				54EF44B53683ACAFBFA67B32 /* Info.plist */,
@@ -150,6 +159,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				9AD3301071E2CA9C67C1B8F6 /* AudioRecorder.swift in Sources */,
+				C24F45854857ECBAA9539CB3 /* Clip.swift in Sources */,
+				E5AB6705F5457F5C82CEDA58 /* ClipStore.swift in Sources */,
+				ACA64F1D2BA856728F323BE2 /* ClipsView.swift in Sources */,
 				B1DE4695C0BBB1EAB92AB8E4 /* ContentView.swift in Sources */,
 				4648764A9A09462EC7EB5C39 /* DropboxManager.swift in Sources */,
 				1F5E5FA37F79F234D1EF16B5 /* SettingsView.swift in Sources */,
