@@ -93,7 +93,7 @@ struct ContentView: View {
             ClipsView().environmentObject(clipStore)
         }
         .sheet(isPresented: $showNamingSheet) {
-            ClipNameSheet(availableTags: clipStore.availableTags) { description, tags in
+            ClipNameSheet(availableTags: clipStore.availableTags, onCancel: cancelPendingRecording) { description, tags in
                 uploadPendingRecording(description: description, tags: tags)
             }
         }
@@ -142,6 +142,14 @@ struct ContentView: View {
         case .uploading:
             break
         }
+    }
+
+    private func cancelPendingRecording() {
+        if let url = pendingUploadURL {
+            try? FileManager.default.removeItem(at: url)
+            pendingUploadURL = nil
+        }
+        recorder.state = .idle
     }
 
     private func uploadPendingRecording(description: String?, tags: [String]) {

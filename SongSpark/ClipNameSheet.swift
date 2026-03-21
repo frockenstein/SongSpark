@@ -3,7 +3,8 @@ import SwiftUI
 struct ClipNameSheet: View {
     let title: String
     let availableTags: [String]
-    let onSave: (String?, [String]) -> Void   // (description, selectedTags)
+    let onCancel: (() -> Void)?              // nil → show SKIP (save with no name); non-nil → show CANCEL (abort)
+    let onSave: (String?, [String]) -> Void  // (description, selectedTags)
 
     @State private var text: String
     @State private var selectedTags: Set<String>
@@ -15,10 +16,12 @@ struct ClipNameSheet: View {
         initialValue: String = "",
         availableTags: [String] = [],
         initialTags: [String] = [],
+        onCancel: (() -> Void)? = nil,
         onSave: @escaping (String?, [String]) -> Void
     ) {
         self.title         = title
         self.availableTags = availableTags
+        self.onCancel      = onCancel
         self.onSave        = onSave
         _text              = State(initialValue: initialValue)
         _selectedTags      = State(initialValue: Set(initialTags))
@@ -108,9 +111,13 @@ struct ClipNameSheet: View {
                 HStack(spacing: 16) {
                     Button {
                         dismiss()
-                        onSave(nil, [])
+                        if let onCancel {
+                            onCancel()
+                        } else {
+                            onSave(nil, [])
+                        }
                     } label: {
-                        Text("SKIP")
+                        Text(onCancel != nil ? "CANCEL" : "SKIP")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .foregroundColor(.gray)
                             .frame(maxWidth: .infinity)
