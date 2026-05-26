@@ -8,6 +8,20 @@ struct ContentView: View {
     @State private var showClips = false
     @State private var pendingUploadURL: URL?
     @State private var showNamingSheet = false
+    
+    private static let quotes = [
+        "all we are is dust in the wind",
+        "all we are is just another brick in the wall",
+        "manic depression is a frustrating mess",
+        "life goes on long after the thrill of living is gone",
+        "we're still running against the wind",
+        "shots, shots, shots, shots, shots, shots",
+        "is this the real life? is this just fantasy?",
+        "i'm all about that bass, 'bout that bass"
+    ]
+    
+    private static let sessionQuote = quotes.randomElement()!
+
 
     var body: some View {
         ZStack {
@@ -42,6 +56,16 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
+
+                Spacer()
+                
+                VStack(spacing: 0) {
+                    Text(Self.sessionQuote)
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(Color.gray.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                }
 
                 Spacer()
 
