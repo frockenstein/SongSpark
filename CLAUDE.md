@@ -91,6 +91,9 @@ e.g. `2026-20-03-1742482800-cool-riff.m4a`
 - **Clip naming sheet keyboard** — do NOT auto-focus the text field on
   appear (no `.onAppear { focused = true }`). The keyboard and sheet
   animating in simultaneously looks janky. Let user tap to type.
+  The sheet content is wrapped in a `ScrollView` to fix the "two taps
+  to focus" issue: without it, the sheet's `UIPanGestureRecognizer`
+  (drag-to-dismiss) swallows the first tap before forwarding to the field.
 
 - **Auto-advance queue** — `ClipStore.currentQueue` is set by `ClipsView`
   to whatever the filtered list is showing. The `AVAudioPlayerDelegate`

@@ -73,13 +73,18 @@ final class ClipStore: NSObject, ObservableObject {
         }
     }
 
-    func addClip(filename: String, createdAt: Date = Date(), tags: [String] = []) async {
+    func addClip(filename: String, createdAt: Date = Date(), tags: [String] = [], newAvailableTags: [String] = []) async {
+        print("[ClipStore] addClip: '\(filename)' tags=\(tags) newAvailableTags=\(newAvailableTags)")
+        for tag in newAvailableTags where !tag.isEmpty && !availableTags.contains(tag) {
+            availableTags.append(tag)
+        }
         let clip = Clip(filename: filename, createdAt: createdAt, tags: tags)
         clips.insert(clip, at: 0)
+        print("[ClipStore] addClip: clip.tags=\(clip.tags) availableTags now=\(availableTags)")
         await saveMetadata()
     }
 
-    func renameClip(_ clip: Clip, description: String?, tags: [String]) async {
+    func renameClip(_ clip: Clip, description: String?, tags: [String], newAvailableTags: [String] = []) async {
         let newFilename = buildFilename(from: clip.filename, description: description)
         let filenameChanged = newFilename != clip.filename
 
@@ -114,7 +119,12 @@ final class ClipStore: NSObject, ObservableObject {
             if playingFilename == clip.filename { stop() }
         }
 
-        if let idx = clips.firstIndex(of: clip) {
+        for tag in newAvailableTags where !tag.isEmpty && !availableTags.contains(tag) {
+            availableTags.append(tag)
+        }
+        // Use id (filename) for lookup — Equatable compares all fields including tags,
+        // so firstIndex(of:) would miss clips whose tags changed since the sheet opened.
+        if let idx = clips.firstIndex(where: { $0.id == clip.id }) {
             clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt, tags: tags)
         }
         await saveMetadata()
@@ -173,7 +183,7 @@ final class ClipStore: NSObject, ObservableObject {
             .lowercased()
             .components(separatedBy: .whitespacesAndNewlines)
             .joined(separator: "-")
-            .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" || $0 == "#" }
     }
 
     private func buildFilename(from original: String, description: String?) -> String {

@@ -4,13 +4,13 @@ struct ClipsView: View {
     @EnvironmentObject var clipStore: ClipStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var activeTag: String?   // nil = show all
+    @State private var activeTags: Set<String> = []
     @State private var editingClip: Clip?
     @State private var deletingClip: Clip?
 
     private var filteredClips: [Clip] {
-        guard let tag = activeTag else { return clipStore.clips }
-        return clipStore.clips.filter { $0.tags.contains(tag) }
+        guard !activeTags.isEmpty else { return clipStore.clips }
+        return clipStore.clips.filter { activeTags.isSubset(of: $0.tags) }
     }
 
     var body: some View {
@@ -52,15 +52,19 @@ struct ClipsView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            TagFilterPill(label: "ALL", isActive: activeTag == nil) {
-                                activeTag = nil
+                            TagFilterPill(label: "ALL", isActive: activeTags.isEmpty) {
+                                activeTags = []
                             }
                             ForEach(clipStore.availableTags, id: \.self) { tag in
                                 TagFilterPill(
                                     label: tag.uppercased(),
-                                    isActive: activeTag == tag
+                                    isActive: activeTags.contains(tag)
                                 ) {
-                                    activeTag = (activeTag == tag) ? nil : tag
+                                    if activeTags.contains(tag) {
+                                        activeTags.remove(tag)
+                                    } else {
+                                        activeTags.insert(tag)
+                                    }
                                 }
                             }
                         }
@@ -81,7 +85,7 @@ struct ClipsView: View {
                         Image(systemName: "waveform.slash")
                             .font(.system(size: 36))
                             .foregroundColor(Color.white.opacity(0.15))
-                        Text(activeTag == nil ? "No clips yet" : "No clips tagged \"\(activeTag!)\"")
+                        Text(activeTags.isEmpty ? "No clips yet" : "No clips match selected tags")
                             .font(.system(size: 16, design: .monospaced))
                             .foregroundColor(Color.white.opacity(0.3))
                     }
@@ -128,7 +132,7 @@ struct ClipsView: View {
         }
         // Keep ClipStore's currentQueue in sync with whatever is visible.
         .onAppear { clipStore.currentQueue = filteredClips }
-        .onChange(of: activeTag)         { _, _ in clipStore.currentQueue = filteredClips }
+        .onChange(of: activeTags)        { _, _ in clipStore.currentQueue = filteredClips }
         .onChange(of: clipStore.clips)   { _, _ in clipStore.currentQueue = filteredClips }
         // Edit sheet
         .sheet(item: $editingClip) { clip in
@@ -137,8 +141,8 @@ struct ClipsView: View {
                 initialValue: clip.description ?? "",
                 availableTags: clipStore.availableTags,
                 initialTags: clip.tags
-            ) { description, tags in
-                Task { await clipStore.renameClip(clip, description: description, tags: tags) }
+            ) { description, tags, newTags in
+                Task { await clipStore.renameClip(clip, description: description, tags: tags, newAvailableTags: newTags) }
             }
         }
         // Delete confirmation
@@ -240,17 +244,17 @@ struct ClipRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let desc = clip.description {
                     Text(desc)
-                        .font(.system(size: 17, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 19, weight: .semibold, design: .monospaced))
                         .foregroundColor(.white)
                         .lineLimit(1)
                 }
 
                 HStack(spacing: 6) {
                     Text(clip.formattedDay)
-                        .font(.system(size: clip.description == nil ? 17 : 13, design: .monospaced))
+                        .font(.system(size: clip.description == nil ? 19 : 15, design: .monospaced))
                         .foregroundColor(clip.description == nil ? .white : Color.white.opacity(0.45))
                     Text(clip.formattedTime)
-                        .font(.system(size: clip.description == nil ? 17 : 13, design: .monospaced))
+                        .font(.system(size: clip.description == nil ? 19 : 15, design: .monospaced))
                         .foregroundColor(Color.white.opacity(0.4))
                 }
 
@@ -259,7 +263,7 @@ struct ClipRow: View {
                     HStack(spacing: 4) {
                         ForEach(clip.tags.sorted(), id: \.self) { tag in
                             Text(tag)
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
                                 .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.3).opacity(0.85))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)

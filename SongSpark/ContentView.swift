@@ -96,8 +96,8 @@ struct ContentView: View {
             ClipsView().environmentObject(clipStore)
         }
         .sheet(isPresented: $showNamingSheet) {
-            ClipNameSheet(availableTags: clipStore.availableTags, onCancel: cancelPendingRecording) { description, tags in
-                uploadPendingRecording(description: description, tags: tags)
+            ClipNameSheet(availableTags: clipStore.availableTags, onCancel: cancelPendingRecording) { description, tags, newTags in
+                uploadPendingRecording(description: description, tags: tags, newTags: newTags)
             }
         }
     }
@@ -155,8 +155,12 @@ struct ContentView: View {
         recorder.state = .idle
     }
 
-    private func uploadPendingRecording(description: String?, tags: [String]) {
-        guard let fileURL = pendingUploadURL else { return }
+    private func uploadPendingRecording(description: String?, tags: [String], newTags: [String] = []) {
+        print("[ContentView] uploadPendingRecording: description='\(description ?? "nil")' tags=\(tags) newTags=\(newTags) pendingURL=\(pendingUploadURL?.lastPathComponent ?? "nil")")
+        guard let fileURL = pendingUploadURL else {
+            print("[ContentView] uploadPendingRecording: EARLY EXIT — pendingUploadURL is nil")
+            return
+        }
         pendingUploadURL = nil
 
         var uploadURL = fileURL
@@ -174,14 +178,26 @@ struct ContentView: View {
 
         recorder.state = .uploading
         let filename = uploadURL.lastPathComponent
-        dropboxManager.upload(fileURL: uploadURL) { result in
+
+        // Capture direct object references before leaving the MainActor context.
+        // @EnvironmentObject / @StateObject accessed via `self` inside an escaped
+        // async closure can silently fail outside the SwiftUI render cycle.
+        let store   = clipStore
+        let rec     = recorder
+        let manager = dropboxManager
+
+        Task { @MainActor in
+            let result: Result<Void, Error> = await withCheckedContinuation { cont in
+                manager.upload(fileURL: uploadURL) { r in cont.resume(returning: r) }
+            }
             switch result {
             case .success:
-                recorder.state = .done
-                Task { await clipStore.addClip(filename: filename, tags: tags) }
+                rec.state = .done
+                print("[ContentView] upload succeeded — calling addClip with tags=\(tags) newTags=\(newTags)")
+                await store.addClip(filename: filename, tags: tags, newAvailableTags: newTags)
             case .failure(let error):
-                recorder.errorMessage = error.localizedDescription
-                recorder.state = .error
+                rec.errorMessage = error.localizedDescription
+                rec.state = .error
             }
         }
     }
