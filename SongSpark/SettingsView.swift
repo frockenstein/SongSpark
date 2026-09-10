@@ -160,7 +160,7 @@ struct SettingsView: View {
                     TextField("", text: $newTagText, prompt:
                         Text("new tag...")
                             .font(.system(size: 14, design: .monospaced))
-                            .foregroundColor(Color.white.opacity(0.25))
+                            .foregroundColor(Color.white.opacity(0.50))
                     )
                     .font(.system(size: 14, design: .monospaced))
                     .foregroundColor(.white)
@@ -174,7 +174,7 @@ struct SettingsView: View {
                             .font(.system(size: 22))
                             .foregroundColor(
                                 newTagText.trimmingCharacters(in: .whitespaces).isEmpty
-                                    ? Color.white.opacity(0.15)
+                                    ? Color.white.opacity(0.40)
                                     : Color(red: 1.0, green: 0.75, blue: 0.3)
                             )
                     }

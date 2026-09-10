@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var recorder = AudioRecorder()
     @State private var showSettings = false
     @State private var showClips = false
+    @State private var showLyrics = false
     @State private var pendingUploadURL: URL?
     @State private var showNamingSheet = false
     
@@ -34,7 +35,7 @@ struct ContentView: View {
                     Button { showClips = true } label: {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 22))
-                            .foregroundColor(Color.white.opacity(0.55))
+                            .foregroundColor(Color.white.opacity(0.75))
                             .frame(width: 44, height: 44)
                     }
 
@@ -50,7 +51,7 @@ struct ContentView: View {
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape")
                             .font(.system(size: 22))
-                            .foregroundColor(Color.white.opacity(0.55))
+                            .foregroundColor(Color.white.opacity(0.75))
                             .frame(width: 44, height: 44)
                     }
                 }
@@ -105,6 +106,27 @@ struct ContentView: View {
 
                 Spacer()
 
+                // ── Lyrics shortcut ───────────────────────────────────────
+                Button { showLyrics = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "text.bubble")
+                            .font(.system(size: 14))
+                        Text("LYRICS")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .tracking(2)
+                    }
+                    .foregroundColor(.white.opacity(0.60))
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 18)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
                 // ── Dropbox status ────────────────────────────────────────
                 DropboxStatusView()
                     .environmentObject(dropboxManager)
@@ -118,6 +140,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showClips) {
             ClipsView().environmentObject(clipStore)
+        }
+        .sheet(isPresented: $showLyrics) {
+            LyricDictationView()
+                .environmentObject(clipStore)
         }
         .sheet(isPresented: $showNamingSheet) {
             ClipNameSheet(availableTags: clipStore.availableTags, onCancel: cancelPendingRecording) { description, tags, newTags in
@@ -275,9 +301,9 @@ struct RecordButton: View {
                         .fill(.white)
                         .frame(width: 48, height: 48)
                 } else {
-                    Circle()
-                        .fill(.white)
-                        .frame(width: 56, height: 56)
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 54))
+                        .foregroundColor(.white)
                 }
             }
         }

@@ -1,24 +1,36 @@
 import Foundation
 
+enum ClipType: String, Codable {
+    case audio
+    case lyric
+}
+
 struct Clip: Codable, Identifiable, Equatable {
     let filename: String
     let createdAt: Date
     var tags: [String]
+    var type: ClipType
+    /// Full lyric text, stored in clips.json so no extra download is needed.
+    var lyricContent: String?
 
     var id: String { filename }
 
-    init(filename: String, createdAt: Date = Date(), tags: [String] = []) {
-        self.filename = filename
-        self.createdAt = createdAt
-        self.tags = tags
+    init(filename: String, createdAt: Date = Date(), tags: [String] = [], type: ClipType = .audio, lyricContent: String? = nil) {
+        self.filename     = filename
+        self.createdAt    = createdAt
+        self.tags         = tags
+        self.type         = type
+        self.lyricContent = lyricContent
     }
 
-    // Custom decoder so older JSON without a "tags" key decodes gracefully.
+    // Custom decoder — older JSON without "type" or "lyricContent" decodes gracefully.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        filename  = try c.decode(String.self,  forKey: .filename)
-        createdAt = try c.decode(Date.self,    forKey: .createdAt)
-        tags      = (try? c.decode([String].self, forKey: .tags)) ?? []
+        filename     = try c.decode(String.self, forKey: .filename)
+        createdAt    = try c.decode(Date.self,   forKey: .createdAt)
+        tags         = (try? c.decode([String].self,  forKey: .tags))        ?? []
+        type         = (try? c.decode(ClipType.self,  forKey: .type))        ?? .audio
+        lyricContent = try? c.decode(String.self,     forKey: .lyricContent)
     }
 
     /// Description embedded after the 4th dash in the filename, hyphens displayed as spaces.

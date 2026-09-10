@@ -73,6 +73,85 @@ final class ClipStore: NSObject, ObservableObject {
         }
     }
 
+    func updateLyric(_ clip: Clip, text: String, description: String?, tags: [String], newAvailableTags: [String] = []) async {
+        guard let client = DropboxClientsManager.authorizedClient else {
+            errorMessage = "Not connected to Dropbox."
+            return
+        }
+        let newFilename = buildFilename(from: clip.filename, description: description)
+        let contentChanged  = text != (clip.lyricContent ?? "")
+        let filenameChanged = newFilename != clip.filename
+
+        if contentChanged {
+            // Upload new content to the (possibly renamed) path
+            let data = Data(text.utf8)
+            let uploaded = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                client.files.upload(path: "/\(newFilename)", mode: .overwrite, input: data)
+                    .response { [weak self] _, error in
+                        Task { @MainActor [weak self] in
+                            if let error { self?.errorMessage = "Upload failed: \(error.description)" }
+                            cont.resume(returning: error == nil)
+                        }
+                    }
+            }
+            guard uploaded else { return }
+            // Remove old file if path changed
+            if filenameChanged {
+                _ = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                    client.files.deleteV2(path: "/\(clip.filename)")
+                        .response { _, _ in cont.resume(returning: true) }
+                }
+            }
+        } else if filenameChanged {
+            // Content unchanged — just rename
+            let moved = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                client.files.moveV2(fromPath: "/\(clip.filename)", toPath: "/\(newFilename)")
+                    .response { [weak self] _, error in
+                        Task { @MainActor [weak self] in
+                            if let error { self?.errorMessage = "Rename failed: \(error.description)" }
+                            cont.resume(returning: error == nil)
+                        }
+                    }
+            }
+            guard moved else { return }
+        }
+
+        for tag in newAvailableTags where !tag.isEmpty && !availableTags.contains(tag) {
+            availableTags.append(tag)
+        }
+        if let idx = clips.firstIndex(where: { $0.id == clip.id }) {
+            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt, tags: tags, type: .lyric, lyricContent: text)
+        }
+        await saveMetadata()
+    }
+
+    func addLyric(text: String, description: String?, tags: [String], newAvailableTags: [String] = []) async {
+        guard let client = DropboxClientsManager.authorizedClient else {
+            errorMessage = "Not connected to Dropbox."
+            return
+        }
+        let filename = makeLyricFilename(description: description)
+        let data = Data(text.utf8)
+
+        let uploaded = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            client.files.upload(path: "/\(filename)", mode: .overwrite, input: data)
+                .response { [weak self] _, error in
+                    Task { @MainActor [weak self] in
+                        if let error { self?.errorMessage = "Upload failed: \(error.description)" }
+                        cont.resume(returning: error == nil)
+                    }
+                }
+        }
+        guard uploaded else { return }
+
+        for tag in newAvailableTags where !tag.isEmpty && !availableTags.contains(tag) {
+            availableTags.append(tag)
+        }
+        let clip = Clip(filename: filename, createdAt: Date(), tags: tags, type: .lyric, lyricContent: text)
+        clips.insert(clip, at: 0)
+        await saveMetadata()
+    }
+
     func addClip(filename: String, createdAt: Date = Date(), tags: [String] = [], newAvailableTags: [String] = []) async {
         print("[ClipStore] addClip: '\(filename)' tags=\(tags) newAvailableTags=\(newAvailableTags)")
         for tag in newAvailableTags where !tag.isEmpty && !availableTags.contains(tag) {
@@ -125,7 +204,8 @@ final class ClipStore: NSObject, ObservableObject {
         // Use id (filename) for lookup — Equatable compares all fields including tags,
         // so firstIndex(of:) would miss clips whose tags changed since the sheet opened.
         if let idx = clips.firstIndex(where: { $0.id == clip.id }) {
-            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt, tags: tags)
+            clips[idx] = Clip(filename: newFilename, createdAt: clip.createdAt, tags: tags,
+                              type: clip.type, lyricContent: clip.lyricContent)
         }
         await saveMetadata()
     }
@@ -186,15 +266,31 @@ final class ClipStore: NSObject, ObservableObject {
             .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" || $0 == "#" }
     }
 
+    private func makeLyricFilename(description: String?) -> String {
+        let now      = Date()
+        let cal      = Calendar.current
+        let year     = cal.component(.year,  from: now)
+        let day      = cal.component(.day,   from: now)
+        let month    = cal.component(.month, from: now)
+        let unix     = Int(now.timeIntervalSince1970)
+        let base     = "\(year)-\(String(format: "%02d", day))-\(String(format: "%02d", month))-\(unix)"
+        if let desc = description, !desc.isEmpty {
+            let s = Self.sanitize(desc)
+            return s.isEmpty ? "\(base).txt" : "\(base)-\(s).txt"
+        }
+        return "\(base).txt"
+    }
+
     private func buildFilename(from original: String, description: String?) -> String {
+        let ext   = (original as NSString).pathExtension          // "m4a" or "txt"
         let base  = (original as NSString).deletingPathExtension
         let parts = base.components(separatedBy: "-")
         let timestamp = parts.prefix(4).joined(separator: "-")
         if let desc = description, !desc.isEmpty {
             let sanitized = Self.sanitize(desc)
-            return sanitized.isEmpty ? "\(timestamp).m4a" : "\(timestamp)-\(sanitized).m4a"
+            return sanitized.isEmpty ? "\(timestamp).\(ext)" : "\(timestamp)-\(sanitized).\(ext)"
         }
-        return "\(timestamp).m4a"
+        return "\(timestamp).\(ext)"
     }
 
     private func saveMetadata() async {

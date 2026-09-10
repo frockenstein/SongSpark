@@ -60,7 +60,7 @@ struct ClipNameSheet: View {
                     VStack(spacing: 6) {
                         TextField("", text: $text, prompt: Text("name this idea...")
                             .font(.system(size: 15, design: .monospaced))
-                            .foregroundColor(Color.white.opacity(0.2))
+                            .foregroundColor(Color.white.opacity(0.45))
                         )
                         .font(.system(size: 15, design: .monospaced))
                         .foregroundColor(.white)
@@ -129,7 +129,7 @@ struct ClipNameSheet: View {
                     HStack(spacing: 8) {
                         TextField("", text: $newTagText, prompt: Text("new tag...")
                             .font(.system(size: 13, design: .monospaced))
-                            .foregroundColor(Color.white.opacity(0.2))
+                            .foregroundColor(Color.white.opacity(0.45))
                         )
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundColor(.white)
@@ -145,7 +145,7 @@ struct ClipNameSheet: View {
                                 .font(.system(size: 20))
                                 .foregroundColor(
                                     newTagText.trimmingCharacters(in: .whitespaces).isEmpty
-                                        ? Color.white.opacity(0.15)
+                                        ? Color.white.opacity(0.40)
                                         : amber
                                 )
                         }

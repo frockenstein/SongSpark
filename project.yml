@@ -28,6 +28,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSMicrophoneUsageDescription: "SongSpark needs microphone access to record your musical ideas."
+        NSSpeechRecognitionUsageDescription: "SongSpark uses speech recognition to transcribe your lyric ideas as you speak them."
         NSLocationWhenInUseUsageDescription: "SongSpark stamps your recordings with GPS location."
         UIBackgroundModes:
           - audio
